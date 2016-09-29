@@ -225,9 +225,9 @@ public:
 
     // For evaluation only
 
-    // Replace times nodes with quantized versions (for CPU evaluation).
+    // Replace times node with quantized version (for CPU evaluation).
     // This can have a benefit for larger node sizes (e.g. 500).
-    void QuantizeTimesNodes();
+    void QuantizeTimesNodes(wstring nodeName);
 
 public:
     // -----------------------------------------------------------------------

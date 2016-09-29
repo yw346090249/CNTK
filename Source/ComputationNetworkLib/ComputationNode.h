@@ -522,28 +522,7 @@ public:
             return L" x " + axisName;
     }
 
-    // 
-    // True if this node's value remains static over different forward passes, i.e.
-    // it is not dependent on a network input.
-    //
-    virtual bool ValueIsConst() const
-    {
-        bool isStatic = ValueIsConstSelf();
-        if (isStatic)
-        {
-            const auto& inputs = GetInputs();
-            for (const auto& input : inputs)
-                isStatic &= input->ValueIsConst();
-        }
-        return isStatic;
-    }
-
-protected:
-    virtual bool ValueIsConstSelf() const
-    {
-        return true;
-    }
-protected: public: // ...the following should be protected, but nodes inquire about their children, requiring public access
+public: // ...the following should be protected, but nodes inquire about their children, requiring public access
 
     size_t GetNumParallelSequences() const
     {

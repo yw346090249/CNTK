@@ -18,6 +18,11 @@
 #include <algorithm>
 #include <utility>
 #include <assert.h>
+#include "BlockMultiplier.h"
+#include "BlockHandlerSSE.h"
+#ifdef SUPPORT_AVX2
+#include "BlockHandlerAVX.h"
+#endif
 
 namespace Microsoft { namespace MSR { namespace CNTK {
 
@@ -660,7 +665,13 @@ template class TransposeTimesNode<double>;
 // QuantizedTimesNode - Node that will be used in place of Times/TransposeTimes at load time, 
 // if quantization is turned on.
 // ------------------------------------------------------------------------------------------------
-
+// -------------------------------------------------------------------
+// Quantized matrix product. This scales inputs to 16 bit integers, performs
+// integer multiplication using SSE/AVX2, and transforms the results back.
+// Both matrices must be dense.
+// preppedA: If not null and its contents is null, allocate a matrix (which
+// must be freed using FreeQuantizedMatrix), and populate it with a scaled 
+// version. In this case, the contents of preppedScaleA is also populated.
 template <class ElemType, bool m_transpose>
 class QuantizedBlockTimesNode : public TimesNodeBase<ElemType, m_transpose>
 {
@@ -670,28 +681,99 @@ class QuantizedBlockTimesNode : public TimesNodeBase<ElemType, m_transpose>
     int16_t* m_preparedA = nullptr;
     ElemType m_scaleA;
     bool m_reuseA;
+    bool m_firstPass;
+#ifdef SUPPORT_AVX2
+    BlockMultiplier<BlockHandlerAVX> m_mult;
+#else
+    BlockMultiplier<BlockHandlerSSE> m_mult;
+#endif
+    int16_t* m_matA, m_newA, m_matB;
+    int32_t* m_matC;
+    int m_m, m_l, m_k;
+
 public:
     QuantizedBlockTimesNode(DEVICEID_TYPE deviceId, const wstring& name, size_t outputRank = 1)
         : Base(deviceId, name, outputRank)
     {
+        if (deviceId != CPUDEVICE)
+            LogicError("Quantized operation is supposed to be used on CPU device only.");
+        m_firstPass = true;
     }
 
-public:
+    QuantizedBlockTimesNode(const QuantizedBlockTimesNode& node) : Base(node.GetDeviceId(), node.NodeName(), node.OutputRank())
+    {
+        LogicError("TODO: Copy ctor for the QuantizedBlockTimesNode");
+    }
+
     virtual void /*ComputationNode::*/ ForwardProp(const FrameRange& fr) override
-    {           
-        if (!fr.IsOneColumnWrt(Input(0)->GetMBLayout()))
-            Base::ForwardProp(fr); // It will come back
-        if (Input(0)->Value().GetMatrixType() != DENSE || Input(1)->Value().GetMatrixType() != DENSE)
-            Base::ForwardProp(fr); // Can't deal with this. We shouldn't be here.
+    {
+        //if (!fr.IsOneColumnWrt(Input(0)->GetMBLayout()))
+        //    Base::ForwardProp(fr); // It will come back
+        //if (Input(0)->Value().GetMatrixType() != DENSE || Input(1)->Value().GetMatrixType() != DENSE)
+        //    Base::ForwardProp(fr); // Can't deal with this. We shouldn't be here.
 
-        TensorView<ElemType> input0 = OneSampleTensorFor(0,  /*gradient=*/false, fr.AllowBroadcast());
-        TensorView<ElemType> input1 = OneSampleTensorFor(1,  /*gradient=*/false, fr.AllowBroadcast());
-        TensorView<ElemType> output = OneSampleTensorFor(-1, /*gradient=*/false, fr);
-        output.AssignQuantizedMatrixProductOf(input0, m_transpose/*transA*/, input1, m_reuseA ? &m_preparedA : nullptr, &m_scaleA);
+        //TensorView<ElemType> input0 = OneSampleTensorFor(0,  /*gradient=*/false, fr.AllowBroadcast());
+        //TensorView<ElemType> input1 = OneSampleTensorFor(1,  /*gradient=*/false, fr.AllowBroadcast());
+        //TensorView<ElemType> output = OneSampleTensorFor(-1, /*gradient=*/false, fr);
+        //int n = (int)shapeB.GetDim(1);
+
+        //if (m_firstPass)
+        //{
+        //    if (m_reuseA)
+        //        auto shapeA = input0.GetShape();
+        //    auto shapeB = input1.GetShape();
+        //    auto shapeC = output.GetShape();
+        //    FlattenShapesToMatrix(shapeA, m_transpose, shapeB, /*transC*/false, shapeC, /*transC*/false);
+
+        //    m_m = (int)shapeA.GetDim(0);
+        //    m_k = (int)shapeA.GetDim(1);
+        //    m_l = (int)shapeB.GetDim(0);
+        //    assert(m_k == m_l);
+
+        //    m_matA = m_mult.CreateMatrixA(m_m, m_k);
+        //    m_newA = m_mult.PrepareB(m_matA, m_k, m_m);
+        //    m_matB = m_mult.CreateMatrixB(m_k, n);
+        //    m_matC = m_mult.CreateMatrixC(m_m, n);
+
+        //}
+
+        //m_firstPass = false;
+
+        //int16_t* newA;
+        //ElemType scaleA;
+        //if (m_reuseA)
+        //{
+        //    newA = *m_preparedA;
+        //    scaleA = *m_scaleA;
+        //}
+        //else
+        //{
+        //    // This should probably never happen
+        //    auto shapeA = input0.GetShape();
+        //    let A = input0.Reshaped(shapeA).AsMatrix();
+        //    int16_t* matA = m_mult.CreateMatrixA(m_m, m_k);
+        //    scaleA = ScaleUp(matA, A, m_transpose ? A->GetNumCols() : A->GetNumRows(), m_transpose);
+        //    newA = m_mult.PrepareB(matA, m_k, m_m);
+        //    m_mult.FreeMatrix(matA);
+        //    if (m_preparedA != nullptr)
+        //    {
+        //        *m_preparedA = newA;
+        //        assert(m_scaleA != nullptr);
+        //        *m_scaleA = scaleA;
+        //    }
+        //}
+
+       
+        
+        //ElemType scaleB = ScaleUp(matB, B, B->GetNumCols(), /*trans*/ false);
+        //// Flip!  m <-> n  and A <-> B
+        //mult.MultiplyMatrices(matB, n, k, newA, m, matC, (int16_t)1, (int16_t)0);
+        //// And convert back
+        //ScaleDown(C, matC, scaleA * scaleB);
+        ////
+
     }
-private:
 
-public:
     virtual void /*ComputationNode::*/ BackpropTo(const size_t /*inputIndex*/, const FrameRange& /*fr*/) override
     {
         NOT_IMPLEMENTED;
@@ -700,16 +782,25 @@ public:
     virtual void /*ComputationNodeBase::*/ Validate(bool isFinalValidationPass) override
     {
         Base::Validate(isFinalValidationPass);
-        m_reuseA = Input(0)->ValueIsConst();
+        // Check if input is learnable parameter
+        // m_reuseA = Input(0)->ValueIsConst();
     }
 
     virtual ~QuantizedBlockTimesNode()
     {
         if (m_preparedA != nullptr)
         {
-             TensorView<ElemType>::FreeQuantizedMatrix(m_preparedA); 
+            FreeQuantizedMatrix(m_preparedA);
         }
+        /*m_mult.FreeMatrix(m_matB);
+        m_mult.FreeMatrix(m_matC);*/
     }
+private:
+    void FreeQuantizedMatrix(int16_t* matrix)
+    {
+        BlockMultiplier<BlockHandlerSSE>::FreeMatrix(matrix); // Template arg doesn't matter.
+    }
+
 };
 
 template class QuantizedBlockTimesNode<float, false>;

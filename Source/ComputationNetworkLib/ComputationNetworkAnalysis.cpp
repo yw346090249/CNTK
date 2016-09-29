@@ -493,9 +493,11 @@ void ReplaceTimesNodeWithQuantized(std::vector<ComputationNodeBasePtr>& replaced
     }
 }
 
-void ComputationNetwork::QuantizeTimesNodes()
+void ComputationNetwork::QuantizeTimesNodes(wstring nodeName)
 {
-    const auto& nodes = GetAllNodes();
+    //Replace Times node with quantizedTimes
+
+    /*const auto& nodes = GetAllNodes();
     std::vector<ComputationNodeBasePtr> replacedNodes;
     for (const auto &n : nodes)
     {
@@ -510,7 +512,7 @@ void ComputationNetwork::QuantizeTimesNodes()
     if (replacedNodes.size() > 0)
     {
         CompileNetwork();
-    }
+    }*/
 }
 
 }}}

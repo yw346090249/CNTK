@@ -147,24 +147,10 @@ public:
     void AssignMatrixProductOf(               bool transC, const TensorView& a, bool transA, const TensorView& b, bool transB, ElemType alpha = 1.0f) { DoMatrixProductOf(0,    transC, a, transA, b, transB, alpha); }
     void AddMatrixProductOf   (               bool transC, const TensorView& a, bool transA, const TensorView& b, bool transB, ElemType alpha = 1.0f) { DoMatrixProductOf(1.0f, transC, a, transA, b, transB, alpha); }
 
-
-    // -------------------------------------------------------------------
-    // Quantized matrix product. This scales inputs to 16 bit integers, performs
-    // integer multiplication using SSE/AVX2, and transforms the results back.
-    // Both matrices must be dense.
-    // preppedA: If not null and its contents is null, allocate a matrix (which
-    // must be freed using FreeQuantizedMatrix), and populate it with a scaled 
-    // version. In this case, the contents of preppedScaleA is also populated.
-    void AssignQuantizedMatrixProductOf(const TensorView& a, bool transA, const TensorView& b, 
-                                        int16_t** preppedA = nullptr, ElemType* preppedScaleA = nullptr);
-    
-    // Free the matrix allocated by AssignQuantizedMatrixProductOf.
-    static void FreeQuantizedMatrix(int16_t* matrix);
-
     shared_ptr<Matrix<ElemType>> AsMatrix() const;
     const TensorShape& GetShape() const { return m_shape; }
 
-public:
+private:
     // -------------------------------------------------------------------
     // accessors
     // -------------------------------------------------------------------
@@ -173,11 +159,10 @@ public:
     Matrix<ElemType>&       GetSOB()       { return *m_sob; }
     friend Test::TensorTest<ElemType>;
 
-private:
+
     // -------------------------------------------------------------------
     // sob members
     // -------------------------------------------------------------------
-private:
     shared_ptr<Matrix<ElemType>> m_sob; // Storage OBject that holds the data that is being viewed with this TensorView. This is really a reference (not owing the buffer).
     TensorShape m_shape;                // the meta-data that describes the data's shape and/or access pattern
 };

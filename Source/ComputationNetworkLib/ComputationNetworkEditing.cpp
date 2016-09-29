@@ -168,7 +168,9 @@ void ComputationNetwork::DeleteNode(const std::wstring& nodeName)
 }
 
 // replace a named node by newNode of the same type under the same name, including moving over all network links
-// This is used in the KL-reg based adaptation to reduce feature copy
+// This is used in 
+// 1. Update nodes to quantized versions.
+// 2. The KL-reg based adaptation to reduce feature copy (deprecated)
 // need to update all the mappings as well childrens.
 void ComputationNetwork::ReplaceNode(wstring nodeName, ComputationNodeBasePtr newNode)
 {

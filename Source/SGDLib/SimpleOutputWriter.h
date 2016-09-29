@@ -164,7 +164,7 @@ public:
 
         if (quantizeTimes)
         {
-            m_net->QuantizeTimesNodes();
+            m_net->QuantizeTimesNodes(L"foo");
         }
 
         if (!nodeUnitTest)                                        // regular operation
