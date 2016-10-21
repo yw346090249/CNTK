@@ -1185,7 +1185,7 @@ protected:
 // Provides random sampling functionality.
 //
 // Parameters:
-// * Input(0) Sampling weight vector: Matrix of shape [numClasses x 1] providing sampling weights >= 0.
+// * Input(0): Sampling weight vector: Matrix of shape [numClasses x 1] providing sampling weights >= 0.
 // * sizeOfSampledSet: Size of the sampled set.
 // * allowDuplicates: controls if sampled set is allowed to contain duplicates.
 // --------------------------------------------------------------------------------------------------------------------------------------------------

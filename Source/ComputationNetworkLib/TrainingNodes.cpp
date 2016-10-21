@@ -21,6 +21,13 @@ void RandomSampleNodeBase<ElemType>::Validate(bool isFinalValidationPass)
         let& shape = Input(0)->GetSampleLayout();
         let dims = shape.GetDims();
         size_t nClasses = dims[0];
+
+        if (Input(0)->HasMBLayout())
+            InvalidArgument("%ls %ls operation requires weights not to have an mb layout", NodeName().c_str(), OperationName().c_str());
+
+        if (!shape.IsColumnVector())
+            InvalidArgument("%ls %ls operation requires sampling weights must be a vector", NodeName().c_str(), OperationName().c_str());
+
         if (!m_allowDuplicates && nClasses <= m_sizeOfSampledSet)
             InvalidArgument("For sampling without duplicates the number of requested samples (%lu) needs to be less than the number of classes (%lu).", m_sizeOfSampledSet, nClasses);
     }
