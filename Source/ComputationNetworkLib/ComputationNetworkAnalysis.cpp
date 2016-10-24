@@ -476,22 +476,22 @@ static int DetermineLoopDirection(const std::vector<ComputationNodeBasePtr>& nes
     return steppingDirection;
 }
 
-template<typename ElemType>
-void ReplaceTimesNodeWithQuantized(std::vector<ComputationNodeBasePtr>& replacedNodes, ComputationNodeBasePtr n)
-{
-    if (n->Is<TimesNode<ElemType>>())
-    {
-        QuantizedBlockTimesNode<ElemType, false> qTimes(n->GetDeviceId(), n->GetName(),
-            n->As<TimesNode<ElemType>>()->GetOutputRank());
-        replacedNodes.push_back(make_shared<QuantizedBlockTimesNode<ElemType, false>>(move(qTimes)));
-    }
-    else if (n->Is<TransposeTimesNode<ElemType>>())
-    {
-        QuantizedBlockTimesNode<ElemType, true> qTimes(n->GetDeviceId(), n->GetName(),
-            n->As<TransposeTimesNode<ElemType>>()->GetOutputRank());
-        replacedNodes.push_back(make_shared<QuantizedBlockTimesNode<ElemType, true>>(move(qTimes)));
-    }
-}
+//template<typename ElemType>
+//void ReplaceTimesNodeWithQuantized(std::vector<ComputationNodeBasePtr>& replacedNodes, ComputationNodeBasePtr n)
+//{
+//    if (n->Is<TimesNode<ElemType>>())
+//    {
+//        QuantizedTimesNode<ElemType, false> qTimes(n->GetDeviceId(), n->GetName(),
+//            n->As<TimesNode<ElemType>>()->GetOutputRank());
+//        replacedNodes.push_back(make_shared<QuantizedTimesNode<ElemType, false>>(move(qTimes)));
+//    }
+//    else if (n->Is<TransposeTimesNode<ElemType>>())
+//    {
+//        QuantizedTimesNode<ElemType, true> qTimes(n->GetDeviceId(), n->GetName(),
+//            n->As<TransposeTimesNode<ElemType>>()->GetOutputRank());
+//        replacedNodes.push_back(make_shared<QuantizedTimesNode<ElemType, true>>(move(qTimes)));
+//    }
+//}
 
 void ComputationNetwork::QuantizeTimesNodes(wstring nodeName)
 {
