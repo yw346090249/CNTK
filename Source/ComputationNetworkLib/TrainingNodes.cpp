@@ -218,6 +218,7 @@ void RandomSampleInclusionFrequencyNode<ElemType>::ForwardPropNonLooping()
 {
     Base::UpdateWeightsPrefixSum();
     Matrix<ElemType>& valueMatrix = ValueAsMatrix();
+    // BUGBUG: avoid moving matrix from GPU to CPU.
     valueMatrix.TransferToDeviceIfNotThere(CPUDEVICE, /*ismoved =*/ true/*means: BOTH state not ok */, /*emptyTransfer =*/ true, /*updatePreferredDevice =*/ false);
     valueMatrix.SetDevice(CPUDEVICE);
 
@@ -233,6 +234,7 @@ void RandomSampleInclusionFrequencyNode<ElemType>::ForwardPropNonLooping()
         // Get the sampling probablility for from the weights for i-th class.
         double samplingProb = samplingWeights.GetValue(i, 0) / sumOfWeights;
         double estimatedCount = EstimateInSampleFrequency(samplingProb, estimatedNumTries);
+        // BUGBUG: SetValue migh be slow. Consider alternative.
         valueMatrix.SetValue(i, 0, (ElemType)estimatedCount);
     }
 }
