@@ -3310,6 +3310,7 @@ namespace CNTK
         std::vector<LearnerPtr> m_parameterLearners;
 
         size_t m_prevMinibatchNumSamples;
+        size_t m_parallelizationStartAfterSampleCount;
         ValuePtr m_prevMinibatchAggregateTrainingLossValue;
         ValuePtr m_prevMinibatchAggregateEvalCriterionValue;
     };
@@ -3428,7 +3429,7 @@ namespace CNTK
     ///
     /// Instantiate the CNTK built-in composite minibatch source.
     ///
-    CNTK_API MinibatchSourcePtr CreateCompositeMinibatchSource(const Dictionary& configuration, DistributedCommunicatorPtr communicator = nullptr);
+    CNTK_API MinibatchSourcePtr CreateCompositeMinibatchSource(const Dictionary& configuration, size_t parallelizationStartAfterSampleCount=0);
 
     struct StreamConfiguration
     {
@@ -3445,7 +3446,7 @@ namespace CNTK
     /// 
     /// Instantiate the CNTK built-in test format minibatch source
     ///
-    inline MinibatchSourcePtr TextFormatMinibatchSource(const std::wstring& dataFilePath, const std::vector<StreamConfiguration>& streamConfigs, size_t epochSize = MinibatchSource::InfinitelyRepeat, bool randomize = true, DistributedCommunicatorPtr communicator = nullptr)
+    inline MinibatchSourcePtr TextFormatMinibatchSource(const std::wstring& dataFilePath, const std::vector<StreamConfiguration>& streamConfigs, size_t epochSize = MinibatchSource::InfinitelyRepeat, bool randomize = true, size_t parallelizationStartAfterSampleCount=0)
     {
         ::CNTK::Dictionary minibatchSourceConfiguration;
         minibatchSourceConfiguration[L"epochSize"] = epochSize;
@@ -3477,7 +3478,7 @@ namespace CNTK
         deserializerConfiguration[L"input"] = inputStreamsConfig;
         minibatchSourceConfiguration[L"deserializers"] = std::vector<::CNTK::DictionaryValue>({ deserializerConfiguration });
 
-        return CreateCompositeMinibatchSource(minibatchSourceConfiguration, communicator);
+        return CreateCompositeMinibatchSource(minibatchSourceConfiguration, parallelizationStartAfterSampleCount);
     }
 
     ///
@@ -3626,12 +3627,26 @@ namespace CNTK
         // Return the distributed communicator used in the distributed trainer
         CNTK_API virtual DistributedCommunicatorPtr GetCommunicator() = 0;
 
+        // Return the parallelization-start-after sample count
+        CNTK_API size_t GetParallelizationStartAfterSampleCount() const
+        {
+            return m_parallelizationStartAfterSampleCount;
+        }
+
+        // Set the parallelization-start-after sample count
+        DistributedTrainer(size_t parallelizationStartAfterSampleCount) :
+            m_parallelizationStartAfterSampleCount(parallelizationStartAfterSampleCount)
+        {}
+
         virtual ~DistributedTrainer() {}
+
+    protected:
+        size_t m_parallelizationStartAfterSampleCount;
     };
 
-    CNTK_API DistributedTrainerPtr CreateDataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate);
+    CNTK_API DistributedTrainerPtr CreateDataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t parallelizationStartAfterSampleCount=0);
 
-    CNTK_API DistributedTrainerPtr CreateQuantizedDataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate);
+    CNTK_API DistributedTrainerPtr CreateQuantizedDataParallelDistributedTrainer(QuantizedDistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t parallelizationStartAfterSampleCount);
 
     CNTK_API DistributedTrainerPtr CreateBlockMomentumDistributedTrainer(
         DistributedCommunicatorPtr communicator,
@@ -3639,14 +3654,16 @@ namespace CNTK
         double blockMomentumAsTimeConstant,
         bool useNestrovMomentum = true,
         bool resetSGDMomentumAfterAggregation = true,
-        double blockLearningRate = 1.0);
+        double blockLearningRate = 1.0,
+        size_t parallelizationStartAfterSampleCount = 0);
 
     CNTK_API DistributedTrainerPtr CreateBlockMomentumDistributedTrainer(
         DistributedCommunicatorPtr communicator,
         size_t blockSize,
         bool useNestrovMomentum = true,
         bool resetSGDMomentumAfterAggregation = true,
-        double blockLearningRate = 1.0);
+        double blockLearningRate = 1.0,
+        size_t parallelizationStartAfterSampleCount = 0);
 }
 
 

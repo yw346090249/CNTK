@@ -68,7 +68,11 @@ namespace CNTK
         {
             InvalidArgument("Trainer ctor: Union of the parameters covered by the specified parameterLearners should match the specified model's parameters");
         }
-            
+
+        if (m_distributedTrainer != nullptr)
+        {
+            m_parallelizationStartAfterSampleCount = m_distributedTrainer->GetParallelizationStartAfterSampleCount();
+        }
     }
 
     Trainer::Trainer(const FunctionPtr& model, const FunctionPtr& lossFunction, const FunctionPtr& evaluationFunction, const std::vector<LearnerPtr>& parameterLearners)
@@ -146,7 +150,17 @@ namespace CNTK
 
         outputs.insert(outputsToFetch.begin(), outputsToFetch.end());
 
-        if (m_distributedTrainer)
+        // when distributed trainer exists, parallelization starts after specified number of samples seen
+        // before that, all workers run locally without aggregation (and minibatch source run locally as well)
+        // NOTE that this relies on determinism on reader for all workers to reach the same state
+        // TODO: pass the model/parameter from worker-0 to other workers when start parallelization
+        m_parallelizationStartAfterSampleCount -= std::min(m_parallelizationStartAfterSampleCount, m_prevMinibatchNumSamples);
+
+        bool shouldRunDistributed =
+            m_distributedTrainer && 
+            m_parallelizationStartAfterSampleCount == 0;
+
+        if (shouldRunDistributed)
             m_distributedTrainer->PreMinibatchCallback(*this);
 
         auto backPropSate = m_combinedTrainingFunction->Forward(arguments, outputs, computeDevice, { m_aggregatedLossFunction });
@@ -177,7 +191,7 @@ namespace CNTK
 
         m_prevMinibatchNumSamples = GetSampleCount(m_trainingSampleCountVar, outputs[m_trainingSampleCountVar]);
 
-        if (m_distributedTrainer)
+        if (shouldRunDistributed)
         {
             // Aggregation should happen in the same order, the order of parmaters is guaranteed to be the same.
             std::vector<std::pair<Parameter, NDArrayViewPtr>> gradients;
@@ -231,6 +245,7 @@ namespace CNTK
             m_distributedTrainer->GetCommunicator()->Barrier();
 
             // for distributed training, only save checkpoint at worker 0
+            // TODO: save m_parallelizationStartAfterSampleCount to checkpoint
             shouldSave = m_distributedTrainer->GetCommunicator()->CurrentWorker().IsMain();
         }
     
@@ -242,8 +257,7 @@ namespace CNTK
 
             for (const auto& learner : m_parameterLearners)
             {
-                // TODO: add DictionaryValue(T&&)
-                learnerStates.push_back(DictionaryValue(learner->Serialize()));
+                learnerStates.push_back(std::move(DictionaryValue(learner->Serialize())));
             }
         
             std::wstring trainerStateCheckpointFilePath = GetTrainerStateCheckpointFilePath(modelFilePath);

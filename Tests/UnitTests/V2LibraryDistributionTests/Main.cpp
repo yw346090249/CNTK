@@ -124,8 +124,8 @@ int main(int /*argc*/, char* /*argv*/[])
     if (Is1bitSGDAvailable())
     {
         {
-            auto communicator = QuantizedMPICommunicator(true, true, 32);
-            auto distributedTrainer = CreateQuantizedDataParallelDistributedTrainer(communicator, false);
+            auto communicator = QuantizedMPICommunicator(true, true, 1);
+            auto distributedTrainer = CreateQuantizedDataParallelDistributedTrainer(communicator, false, 100);
             TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), distributedTrainer, communicator->CurrentWorker().m_globalRank);
 
             if (IsGPUAvailable())

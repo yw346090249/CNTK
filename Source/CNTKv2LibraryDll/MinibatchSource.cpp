@@ -13,6 +13,7 @@
 #include "Function.h"
 #include <tuple>
 #include "Value.h"
+#include "MPIWrapper.h"
 
 using namespace Microsoft::MSR::CNTK;
 
@@ -62,15 +63,21 @@ namespace CNTK
         return *(*(matchingStreamInfos.begin()));
     }
 
-    MinibatchSourcePtr CreateCompositeMinibatchSource(const Dictionary& configuration, DistributedCommunicatorPtr communicator)
+    MinibatchSourcePtr CreateCompositeMinibatchSource(const Dictionary& configuration, size_t parallelizationStartAfterSampleCount)
     {
-        return MinibatchSourcePtr(new CompositeMinibatchSource(configuration, communicator));
+        return MinibatchSourcePtr(new CompositeMinibatchSource(configuration, parallelizationStartAfterSampleCount));
     }
 
     /*static*/ const std::wstring CompositeMinibatchSource::MinibatchSourcePositionAttributeName = L"minibatchSourcePosition";
+    /*static*/ const std::wstring CompositeMinibatchSource::MinibatchSourceParallelizationStartAfterSampleCountName = L"minibatchSourceParallelizationStartAfterSampleCount";
 
-    CompositeMinibatchSource::CompositeMinibatchSource(const Dictionary& configuration, DistributedCommunicatorPtr communicator)
-        : m_epochEndReached(false), m_prevMinibatchSize(0), m_epochSize(MinibatchSource::InfinitelyRepeat), m_truncationLength(0), m_communicator(communicator)
+    CompositeMinibatchSource::CompositeMinibatchSource(const Dictionary& configuration, size_t parallelizationStartAfterSampleCount)
+        : m_epochEndReached(false),
+          m_prevMinibatchSize(0),
+          m_epochSize(MinibatchSource::InfinitelyRepeat),
+          m_truncationLength(0),
+          m_distributed(false),
+          m_parallelizationStartAfterSampleCount(parallelizationStartAfterSampleCount)
     {
         // The CNTK reader implementation requires for each deserializer both the module and deserializer type be specified
         // This is redundant and the V2 API users will just specify type from which the module is automatically inferred
@@ -166,11 +173,28 @@ namespace CNTK
             if (minibatchSizeInSamples == 0)
                 InvalidArgument("GetNextMinibatch: Requested minibatch sizes must be > 0");
 
+            // For the first number of (m_parallelizationStartAfterSampleCount) samples, minibatch source won't run distributed
+            // and m_parallelizationStartAfterSampleCount would subtract previous minibatch sample count util zero
+            // once it's zero and there's MPI instance, minibatch source runs in distributed manner
+            MPIWrapperPtr mpi = MPIWrapper::GetInstance();
+            if (mpi != nullptr && m_parallelizationStartAfterSampleCount > 0)
+            {
+                m_parallelizationStartAfterSampleCount -= std::min(m_parallelizationStartAfterSampleCount, m_prevMinibatchSize);
+            }
+            bool wasDistributed = m_distributed;
+            m_distributed = (mpi != nullptr) && (m_parallelizationStartAfterSampleCount == 0);
+
+            if (wasDistributed != m_distributed)
+            {
+                // when switching distributed mode, reset prevMinibatchSize
+                m_prevMinibatchSize = 0;
+            }
+
             if (m_prevMinibatchSize == 0)
             {
                 EpochConfiguration epochConfig;
-                epochConfig.m_numberOfWorkers = m_communicator ? m_communicator->Workers().size() : 1;
-                epochConfig.m_workerRank = m_communicator ? m_communicator->CurrentWorker().m_globalRank : 0;
+                epochConfig.m_numberOfWorkers = m_distributed ? mpi->NumNodesInUse() : 1;
+                epochConfig.m_workerRank = m_distributed ? mpi->CurrentNodeRank() : 0;
                 epochConfig.m_minibatchSizeInSamples = minibatchSizeInSamples;
                 epochConfig.m_truncationSize = m_truncationLength;
 
@@ -212,8 +236,8 @@ namespace CNTK
                     inputDescriptions[s.m_name] = AsCNTKImplDeviceId(device);
 
                 ReaderConfiguration newConfig;
-                newConfig.m_numberOfWorkers = m_communicator ? m_communicator->Workers().size() : 1;
-                newConfig.m_workerRank = m_communicator ? m_communicator->CurrentWorker().m_globalRank : 0;
+                newConfig.m_numberOfWorkers = m_distributed ? mpi->NumNodesInUse() : 1;
+                newConfig.m_workerRank = m_distributed ? mpi->CurrentNodeRank() : 0;
                 newConfig.m_minibatchSizeInSamples = minibatchSizeInSamples;
                 newConfig.m_truncationSize = m_truncationLength;
 
@@ -263,7 +287,7 @@ namespace CNTK
     {
         Dictionary checkpointState;
         checkpointState[MinibatchSourcePositionAttributeName] = m_shim->GetCurrentSamplePosition();
-
+        checkpointState[MinibatchSourceParallelizationStartAfterSampleCountName] = m_parallelizationStartAfterSampleCount;
         return checkpointState;
     }
 
@@ -271,5 +295,6 @@ namespace CNTK
     {
         auto checkpointedMinibatchSourcePosition = checkpoint[MinibatchSourcePositionAttributeName].Value<size_t>();
         m_shim->SetCurrentSamplePosition(checkpointedMinibatchSourcePosition);
+        m_parallelizationStartAfterSampleCount = checkpoint[MinibatchSourceParallelizationStartAfterSampleCountName].Value<size_t>();
     }
 }
