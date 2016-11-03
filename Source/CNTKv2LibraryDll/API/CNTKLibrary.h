@@ -3633,14 +3633,15 @@ namespace CNTK
             return m_parallelizationStartAfterSampleCount;
         }
 
+        virtual ~DistributedTrainer() {}
+
+    protected:
         // Set the parallelization-start-after sample count
         DistributedTrainer(size_t parallelizationStartAfterSampleCount) :
             m_parallelizationStartAfterSampleCount(parallelizationStartAfterSampleCount)
         {}
 
-        virtual ~DistributedTrainer() {}
-
-    protected:
+    private:
         size_t m_parallelizationStartAfterSampleCount;
     };
 
