@@ -37,7 +37,7 @@ public:
             KeyToId = [](const std::string& key)
             {
                 size_t id;
-                int converted = sscanf_s(key.c_str(), "%llu", &id);
+                int converted = sscanf_s(key.c_str(), "%lu", &id);
                 if (converted != key.size())
                     RuntimeError("Invalid numeric sequence id %s", key.c_str());
                 return id;
