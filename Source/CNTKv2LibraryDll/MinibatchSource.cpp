@@ -63,21 +63,21 @@ namespace CNTK
         return *(*(matchingStreamInfos.begin()));
     }
 
-    MinibatchSourcePtr CreateCompositeMinibatchSource(const Dictionary& configuration, size_t parallelizationStartAfterSampleCount)
+    MinibatchSourcePtr CreateCompositeMinibatchSource(const Dictionary& configuration)
     {
-        return MinibatchSourcePtr(new CompositeMinibatchSource(configuration, parallelizationStartAfterSampleCount));
+        return MinibatchSourcePtr(new CompositeMinibatchSource(configuration));
     }
 
     /*static*/ const std::wstring CompositeMinibatchSource::MinibatchSourcePositionAttributeName = L"minibatchSourcePosition";
     /*static*/ const std::wstring CompositeMinibatchSource::MinibatchSourceParallelizationStartAfterSampleCountName = L"minibatchSourceParallelizationStartAfterSampleCount";
 
-    CompositeMinibatchSource::CompositeMinibatchSource(const Dictionary& configuration, size_t parallelizationStartAfterSampleCount)
+    CompositeMinibatchSource::CompositeMinibatchSource(const Dictionary& configuration)
         : m_epochEndReached(false),
           m_prevMinibatchSize(0),
           m_epochSize(MinibatchSource::InfinitelyRepeat),
           m_truncationLength(0),
           m_distributed(false),
-          m_parallelizationStartAfterSampleCount(parallelizationStartAfterSampleCount)
+          m_parallelizationStartAfterSampleCount(0)
     {
         // The CNTK reader implementation requires for each deserializer both the module and deserializer type be specified
         // This is redundant and the V2 API users will just specify type from which the module is automatically inferred
@@ -132,7 +132,7 @@ namespace CNTK
 
         const wchar_t* epochSizeConfigurationKey = L"epochSize";
         if (augmentedConfiguration.Contains(epochSizeConfigurationKey))
-            m_epochSize = augmentedConfiguration[epochSizeConfigurationKey].Value<size_t>();
+            m_epochSize = augmentedConfiguration[epochSizeConfigurationKey].ValueAsSizeT();
 
         if (m_epochSize == MinibatchSource::FullDataSweep)
             m_epochSize = Microsoft::MSR::CNTK::requestDataSize;
@@ -143,8 +143,12 @@ namespace CNTK
             augmentedConfiguration[truncatedConfigurationKey].Value<bool>() &&
             augmentedConfiguration.Contains(truncationLengthConfigurationKey))
         {
-            m_truncationLength = augmentedConfiguration[truncationLengthConfigurationKey].Value<size_t>();
+            m_truncationLength = augmentedConfiguration[truncationLengthConfigurationKey].ValueAsSizeT();
         }
+
+        const wchar_t* parallelizationStartAfterSampleCountConfigurationKey = L"parallelizationStartAfterSampleCount";
+        if (augmentedConfiguration.Contains(parallelizationStartAfterSampleCountConfigurationKey))
+            m_parallelizationStartAfterSampleCount = augmentedConfiguration[parallelizationStartAfterSampleCountConfigurationKey].ValueAsSizeT();
 
         typedef Reader*(*CreateCompositeDataReaderProc)(const ConfigParameters* parameters);
         CreateCompositeDataReaderProc createReaderProc = (CreateCompositeDataReaderProc)Plugin().Load(L"CompositeDataReader", "CreateCompositeDataReader");

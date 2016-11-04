@@ -39,7 +39,7 @@ num_classes  = 10
 #
 # Define the reader for both training and evaluation action.
 #
-def create_reader(map_file, mean_file, train, distributed_communicator=None):
+def create_reader(map_file, mean_file, train, parallelization_start_after_sample_count=0):
     if not os.path.exists(map_file) or not os.path.exists(mean_file):
         raise RuntimeError("File '%s' or '%s' does not exist. Please run install_cifar10.py from Examples/Image/DataSets/CIFAR-10 to fetch them" %
                            (map_file, mean_file))
@@ -58,7 +58,7 @@ def create_reader(map_file, mean_file, train, distributed_communicator=None):
     return MinibatchSource(ImageDeserializer(map_file, StreamDefs(
         features = StreamDef(field='image', transforms=transforms), # first column in map file is referred to as 'image'
         labels   = StreamDef(field='label', shape=num_classes))),      # and second as 'label'
-        distributed_communicator=distributed_communicator)
+        parallelization_start_after_sample_count = parallelization_start_after_sample_count)
 
 #
 # Resnet building blocks
@@ -122,7 +122,7 @@ def create_resnet_model(input, num_classes):
 #
 # Train and evaluate the network.
 #
-def train_and_evaluate(reader_train, reader_test, max_epochs):
+def train_and_evaluate(reader_train, reader_test, max_epochs, distributed_trainer=None):
 
     # Input variables denoting the features and label data
     input_var = input_variable((num_channels, image_height, image_width))
@@ -152,7 +152,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs):
     learner     = momentum_sgd(z.parameters, lr = lr_per_minibatch, 
                                momentum = momentum_time_constant,
                                l2_regularization_weight = l2_reg_weight)
-    trainer     = Trainer(z, ce, pe, learner)
+    trainer     = Trainer(z, ce, pe, learner, distributed_trainer)
 
     # define mapping from reader streams to network inputs
     input_map = {

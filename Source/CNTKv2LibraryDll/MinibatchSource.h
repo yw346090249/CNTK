@@ -20,7 +20,7 @@ namespace CNTK
         static const std::wstring MinibatchSourceParallelizationStartAfterSampleCountName;
 
     public:
-        CompositeMinibatchSource(const Dictionary& configuration, size_t parallelizationStartAfterSampleCount);
+        CompositeMinibatchSource(const Dictionary& configuration);
 
         virtual const std::unordered_set<StreamInformation>& StreamInfos() override { return m_streamInfos; }
 

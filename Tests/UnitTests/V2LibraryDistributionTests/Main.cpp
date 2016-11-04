@@ -36,7 +36,7 @@ bool Is1bitSGDAvailable()
 }
 
 // TODO: Move to other file.
-void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, DistributedTrainerPtr distributedTrainer, size_t rank)
+void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, DistributedTrainerPtr distributedTrainer, size_t rank, size_t parallelizationStartAfterSampleCount = 0)
 {
     const size_t inputDim = 2;
     const size_t numOutputClasses = 2;
@@ -50,7 +50,7 @@ void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, 
 
     auto featureStreamName = L"features";
     auto labelsStreamName = L"labels";
-    auto minibatchSource = TextFormatMinibatchSource(L"SimpleDataTrain_cntk_text.txt", { { featureStreamName, inputDim }, { labelsStreamName, numOutputClasses } }, MinibatchSource::FullDataSweep, false);
+    auto minibatchSource = TextFormatMinibatchSource(L"SimpleDataTrain_cntk_text.txt", { { featureStreamName, inputDim }, { labelsStreamName, numOutputClasses } }, MinibatchSource::FullDataSweep, false, parallelizationStartAfterSampleCount);
     auto featureStreamInfo = minibatchSource->StreamInfo(featureStreamName);
     auto labelStreamInfo = minibatchSource->StreamInfo(labelsStreamName);
 
@@ -124,9 +124,10 @@ int main(int /*argc*/, char* /*argv*/[])
     if (Is1bitSGDAvailable())
     {
         {
+            size_t parallelizationStartAfterSampleCount = 100;
             auto communicator = QuantizedMPICommunicator(true, true, 1);
-            auto distributedTrainer = CreateQuantizedDataParallelDistributedTrainer(communicator, false, 100);
-            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), distributedTrainer, communicator->CurrentWorker().m_globalRank);
+            auto distributedTrainer = CreateQuantizedDataParallelDistributedTrainer(communicator, false, parallelizationStartAfterSampleCount);
+            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), distributedTrainer, communicator->CurrentWorker().m_globalRank, parallelizationStartAfterSampleCount);
 
             if (IsGPUAvailable())
                 TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), distributedTrainer, communicator->CurrentWorker().m_globalRank);

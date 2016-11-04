@@ -23,11 +23,12 @@ def run_distributed_trainer(tmpdir, quantized):
     ce = cross_entropy_with_softmax(z, labels)
     errs = classification_error(z, labels)
 
-    if quantized:
-        communicator = distributed.quantized_mpi_communicator(1)
-    else:
-        communicator = distributed.mpi_communicator()
+    dist_trainer = distributed.data_parallel_distributed_trainer(
+        use_async_buffered_parameter_update=False, 
+        num_quantization_bits=(1 if quantized else 32),
+        parallelization_start_after_sample_count=(100 if quantized else 0))
 
+    communicator = dist_trainer.communicator()
     workers = communicator.workers()
     current_worker = communicator.current_worker()
     found_rank = False
@@ -36,8 +37,6 @@ def run_distributed_trainer(tmpdir, quantized):
             found_rank = True
     
     assert found_rank
-
-    dist_trainer = distributed.data_parallel_distributed_trainer(communicator, False)
 
     momentum_time_constant = momentum_as_time_constant_schedule(1100)
 

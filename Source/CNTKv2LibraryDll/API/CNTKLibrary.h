@@ -1295,6 +1295,16 @@ namespace CNTK
             return m_data.m_sizeT;
         }
 
+        size_t ValueAsSizeT() const
+        {
+            // allow implicit type conversion from int to size_t, as python didn't differentiate them
+            if (m_valueType == Type::Int)
+                return static_cast<size_t>(m_data.m_int);
+
+            VerifyType<size_t>();
+            return m_data.m_sizeT;
+        }
+
         template <typename T, typename std::enable_if<std::is_same<T, float>::value>::type* = nullptr>
         const T& Value() const
         {
@@ -3448,7 +3458,7 @@ namespace CNTK
     ///
     /// Instantiate the CNTK built-in composite minibatch source.
     ///
-    CNTK_API MinibatchSourcePtr CreateCompositeMinibatchSource(const Dictionary& configuration, size_t parallelizationStartAfterSampleCount=0);
+    CNTK_API MinibatchSourcePtr CreateCompositeMinibatchSource(const Dictionary& configuration);
 
     struct StreamConfiguration
     {
@@ -3497,7 +3507,9 @@ namespace CNTK
         deserializerConfiguration[L"input"] = inputStreamsConfig;
         minibatchSourceConfiguration[L"deserializers"] = std::vector<::CNTK::DictionaryValue>({ deserializerConfiguration });
 
-        return CreateCompositeMinibatchSource(minibatchSourceConfiguration, parallelizationStartAfterSampleCount);
+        minibatchSourceConfiguration[L"parallelizationStartAfterSampleCount"] = parallelizationStartAfterSampleCount;
+
+        return CreateCompositeMinibatchSource(minibatchSourceConfiguration);
     }
 
     ///

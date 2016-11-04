@@ -73,37 +73,24 @@ class Communicator(cntk_py.DistributedCommunicator):
     @staticmethod
     def finalize():
         cntk_py.DistributedCommunicator.finalize();
-
-class QuantizedCommunicator(Communicator, cntk_py.QuantizedDistributedCommunicator):
+        
+class DistributedTrainer(cntk_py.DistributedTrainer):
     '''
-    A communicator interface exposing communication primitives that serve as building blocks 
-    for distributed training.
+    A distributed trainer that handles data like gradients/momentums across multiple MPI workers
     '''
+    
+    @typemap
+    def communicator(self):
+        '''
+        Returns the distributed communicator that talks to other MPI workers
+        
+        Returns:
+            :class:`Communicator`: descriptor of current process.
+        '''
+        return super().get_communicator()
 
 @typemap
-def mpi_communicator():
-    '''
-    Creates a mpi communicator
-
-    Returns:
-        :class:`Communicator`: a distributed communicator
-    '''
-    return cntk_py.mpicommunicator()
-
-@typemap
-def quantized_mpi_communicator(num_quantization_bits):
-    '''
-    Creates a quantized mpi communicator
-
-    Args:
-        num_quantization_bits (`int`): num_quantization_bits
-
-    Returns:
-        :class:`QuantizedCommunicator`: a quantized distributed communicator
-    '''
-    return cntk_py.quantized_mpicommunicator(True, True, num_quantization_bits)
-
-def data_parallel_distributed_trainer(communicator, use_async_buffered_parameter_update):
+def data_parallel_distributed_trainer(use_async_buffered_parameter_update=False, num_quantization_bits=32, parallelization_start_after_sample_count=0):
     '''
     Creates a data parallel distributed trainer using `communicator` with
     option `use_async_buffered_parameter_update`.
@@ -115,7 +102,13 @@ def data_parallel_distributed_trainer(communicator, use_async_buffered_parameter
     Returns:
         a distributed trainer instance
     '''
-    if (isinstance(communicator, QuantizedCommunicator)):
-        return cntk_py.create_quantized_data_parallel_distributed_trainer(communicator, use_async_buffered_parameter_update)
+    if (num_quantization_bits < 32):
+        return cntk_py.create_quantized_data_parallel_distributed_trainer(
+            cntk_py.quantized_mpicommunicator(True, True, num_quantization_bits),
+            use_async_buffered_parameter_update,
+            parallelization_start_after_sample_count)
     else:
-        return cntk_py.create_data_parallel_distributed_trainer(communicator, use_async_buffered_parameter_update)
+        return cntk_py.create_data_parallel_distributed_trainer(
+            cntk_py.mpicommunicator(),
+            use_async_buffered_parameter_update,
+            parallelization_start_after_sample_count)

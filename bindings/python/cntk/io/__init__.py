@@ -8,6 +8,7 @@ from .. import cntk_py
 from ..utils import typemap
 from cntk import distributed
 from cntk.device import use_default_device
+import ctypes
 
 INFINITELY_REPEAT = cntk_py.MinibatchSource.infinitely_repeat
 FULL_DATA_SWEEP = cntk_py.MinibatchSource.full_data_sweep
@@ -62,11 +63,15 @@ class MinibatchSource(cntk_py.MinibatchSource):
     :func:`cntk.trainer.Trainer.train_minibatch` function.
     '''
 
-    def __init__(self, deserializers=None, randomize=True, epoch_size=INFINITELY_REPEAT, distributed_communicator=None):
+    def __init__(self, deserializers=None, randomize=True, epoch_size=INFINITELY_REPEAT, parallelization_start_after_sample_count=0):
         if not isinstance(deserializers, (list,tuple)):
             deserializers = [deserializers] # allow passing a single item or a list
-        reader_config = ReaderConfig(deserializers=deserializers, randomize=randomize, epoch_size=epoch_size)
-        source = minibatch_source(reader_config, distributed_communicator)
+        reader_config = ReaderConfig(
+            deserializers=deserializers,
+            randomize=randomize,
+            epoch_size=epoch_size,
+            parallelization_start_after_sample_count=parallelization_start_after_sample_count)
+        source = minibatch_source(reader_config)
         # transplant into this class instance
         self.__dict__ = source.__dict__
         # transplant all members of deserializers into a record called streams
@@ -204,20 +209,16 @@ def _py_dict_to_cntk_dict(py_dict):
 
 # TODO: This should be a private function; use MinibatchSource(deserializer, ...).
 @typemap
-def minibatch_source(config, distributed_communicator):
+def minibatch_source(config):
     '''
     Instantiate the CNTK built-in composite minibatch source which is used to stream data into the network.
     Args:
         config (`dict`): a dictionary containing all the key-value configuration entries.
-        distributed_communicator: optional distributed communicator
     Returns:
         :class:`MinibatchSource`
     '''
     cntk_dict = _py_dict_to_cntk_dict(config)
-    if (distributed_communicator == None):
-        return cntk_py.create_composite_minibatch_source(cntk_dict)
-    else:
-        return cntk_py.create_composite_minibatch_source(cntk_dict, distributed_communicator)
+    return cntk_py.create_composite_minibatch_source(cntk_dict)
 
 # TODO: This should be a private class.
 class ReaderConfig(dict):
@@ -229,30 +230,32 @@ class ReaderConfig(dict):
          (:class:`ImageDeserializer` for now).
         randomize (`bool`, default True): randomize images before every epoch
         epoch_size (`int`): epoch size
+        parallelization_start_after_sample_count (`int`): sample count after which parallelization can start
     '''
 
-    def __init__(self, deserializers=None, randomize=True, epoch_size=INFINITELY_REPEAT):
+    def __init__(self, deserializers=None, randomize=True, epoch_size=INFINITELY_REPEAT, parallelization_start_after_sample_count=0):
 
         self['epochSize'] = epoch_size
         if not isinstance(deserializers, (list, tuple)):
             deserializers = [deserializers]
         self['deserializers'] = self.deserializers = deserializers or []
         self['randomize'] = randomize
+        self['parallelizationStartAfterSampleCount'] = parallelization_start_after_sample_count
 
     @typemap
-    def minibatch_source(self, distributed_communicator=None):
+    def minibatch_source(self):
         '''
         Creates an instance of :class:`MinibatchSource` from this
         instance, which can be used to feed data into the `eval()` methods of
         the graph nodes or the `train_minibatch()` of :class:`cntk.trainer.Trainer`.
 
         Args:
-            distributed_communicator (:class:`cntk.distributed.communicator`): distributed communicator
+            parallelization_start_after_sample_count (`int`): sample count before parallelization can start
         
         Returns:
             instance of :class:`MinibatchSource`
         '''
-        return minibatch_source(self, distributed_communicator)
+        return minibatch_source(self)
 
 
 class Deserializer(dict):
@@ -469,7 +472,7 @@ class CTFDeserializer(Deserializer):
 
 # TODO: This should not exist; use MinibatchSource(CTFDeserializer(...))
 @typemap
-def text_format_minibatch_source(path, stream_configs, epoch_size=INFINITELY_REPEAT, randomize=True, distributed_communicator=None):
+def text_format_minibatch_source(path, stream_configs, epoch_size=INFINITELY_REPEAT, randomize=True, parallelization_start_after_sample_count=0):
     '''
     Creates a minibatch source from a CNTKTextFormatReader file.
 
@@ -481,15 +484,12 @@ def text_format_minibatch_source(path, stream_configs, epoch_size=INFINITELY_REP
         epoch_size (`int`, optional): size of an epoch. In case of 0 the size
          of the training set will be taken. Default is max of 64bit.
         randomize (`bool`, optional): whether to randomize the contents of data file.
-        distributed_communicator (:class:`cntk.distributed.communicator`): optional distributed communicator
+        parallelization_start_after_sample_count (`int`, optional): optional sample count to before parallelization can start
 
     Returns:
         :class:`MinibatchSource`
     '''
-    if distributed_communicator == None:
-        return cntk_py.text_format_minibatch_source(path, stream_configs, epoch_size, randomize)
-    else:
-        return cntk_py.text_format_minibatch_source(path, stream_configs, epoch_size, randomize, distributed_communicator)
+    return cntk_py.text_format_minibatch_source(path, stream_configs, epoch_size, randomize, parallelization_start_after_sample_count)
 
 
 # TODO: this should be a private class; use StreamDef instead
