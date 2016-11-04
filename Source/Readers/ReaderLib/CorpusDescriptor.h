@@ -5,6 +5,9 @@
 
 #pragma once
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #include "StringToIdMap.h"
 #include <set>
 #include <functional>
@@ -37,7 +40,7 @@ public:
             KeyToId = [](const std::string& key)
             {
                 size_t id = 0;
-                int converted = sscanf_s(key.c_str(), "%llu", &id);
+                int converted = sscanf_s(key.c_str(), "%" PRIu64, &id);
                 if (converted != key.size())
                     RuntimeError("Invalid numeric sequence id %s", key.c_str());
                 return id;
