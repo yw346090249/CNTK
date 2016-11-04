@@ -79,6 +79,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
             if (chunk->m_byteSize > 0 && (chunk->m_byteSize + sd.m_byteSize) > m_maxChunkSize)
             {
                 // Creating a new chunk if the size is exceeded.
+                chunk->m_sequences.shrink_to_fit();
                 m_chunks.push_back({});
                 chunk = &m_chunks.back();
                 chunk->m_id = (ChunkIdType) (m_chunks.size() - 1);
