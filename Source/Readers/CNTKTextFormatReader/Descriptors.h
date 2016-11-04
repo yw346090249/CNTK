@@ -63,8 +63,9 @@ namespace Microsoft { namespace MSR { namespace CNTK {
         std::vector<ChunkDescriptor> m_chunks;                                  // chunks
         std::map<size_t, std::pair<size_t, size_t>> m_keyToSequenceInChunk;     // sequence key -> sequence location in chunk
         const size_t m_maxChunkSize;                                            // maximum chunk size in bytes
+        bool m_isPrimary;                                                       // index for primary deserializer
 
-        explicit Index(size_t chunkSize) : m_maxChunkSize(chunkSize)
+        explicit Index(size_t chunkSize, bool isPrimary) : m_maxChunkSize(chunkSize), m_isPrimary(isPrimary)
         {}
 
         // Adds sequence (metadata) to the index. Additionally, it
@@ -92,9 +93,12 @@ namespace Microsoft { namespace MSR { namespace CNTK {
             chunk->m_numberOfSamples += sd.m_numberOfSamples;
             sd.m_chunkId = chunk->m_id;
             sd.m_id = chunk->m_sequences.size();
-            auto location = std::make_pair(chunk->m_id, sd.m_id);
-            auto sequenceId = sd.m_key.m_sequence;
-            m_keyToSequenceInChunk.insert(std::make_pair(sequenceId, location));
+            if (!m_isPrimary)
+            {
+                auto location = std::make_pair(chunk->m_id, sd.m_id);
+                auto sequenceId = sd.m_key.m_sequence;
+                m_keyToSequenceInChunk.insert(std::make_pair(sequenceId, location));
+            }
             chunk->m_sequences.push_back(sd);
         }
 

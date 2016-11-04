@@ -23,7 +23,7 @@ class TextParser : public DataDeserializerBase {
 public:
     explicit TextParser(const TextConfigHelper& helper);
 
-    TextParser(CorpusDescriptorPtr corpus, const TextConfigHelper& helper);
+    TextParser(CorpusDescriptorPtr corpus, const TextConfigHelper& helper, bool isPrimary);
 
     ~TextParser();
 
@@ -124,6 +124,9 @@ private:
     unsigned int m_numRetries; // specifies the number of times an unsuccessful
     // file operation should be repeated (default value is 5).
 
+    // Indicates is the deserializer is primary.
+    bool m_isPrimary;
+
     // Corpus descriptor.
     CorpusDescriptorPtr m_corpus;
 
@@ -180,7 +183,7 @@ private:
     // Given a descriptor, retrieves the data for the corresponding chunk from the file.
     void LoadChunk(TextChunkPtr& chunk, const ChunkDescriptor& descriptor);
 
-    TextParser(CorpusDescriptorPtr corpus, const std::wstring& filename, const vector<StreamDescriptor>& streams);
+    TextParser(CorpusDescriptorPtr corpus, const std::wstring& filename, const vector<StreamDescriptor>& streams, bool isPrimary);
 
     // Fills some metadata members to be conformant to the exposed SequenceData interface.
     void FillSequenceMetadata(SequenceBuffer& sequenceBuffer, size_t sequenceId);

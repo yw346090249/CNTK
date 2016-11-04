@@ -61,12 +61,12 @@ struct TextParser<ElemType>::StreamInfo
 };
 
 template <class ElemType>
-TextParser<ElemType>::TextParser(const TextConfigHelper& helper) : TextParser(std::make_shared<CorpusDescriptor>(true), helper)
+TextParser<ElemType>::TextParser(const TextConfigHelper& helper) : TextParser(std::make_shared<CorpusDescriptor>(true), helper, true)
 {}
 
 template <class ElemType>
-TextParser<ElemType>::TextParser(CorpusDescriptorPtr corpus, const TextConfigHelper& helper) :
-TextParser(corpus, helper.GetFilePath(), helper.GetStreams())
+TextParser<ElemType>::TextParser(CorpusDescriptorPtr corpus, const TextConfigHelper& helper, bool isPrimary) :
+TextParser(corpus, helper.GetFilePath(), helper.GetStreams(), isPrimary)
 {
     SetTraceLevel(helper.GetTraceLevel());
     SetMaxAllowedErrors(helper.GetMaxAllowedErrors());
@@ -78,7 +78,7 @@ TextParser(corpus, helper.GetFilePath(), helper.GetStreams())
 
 
 template <class ElemType>
-TextParser<ElemType>::TextParser(CorpusDescriptorPtr corpus, const std::wstring& filename, const vector<StreamDescriptor>& streams) :
+TextParser<ElemType>::TextParser(CorpusDescriptorPtr corpus, const std::wstring& filename, const vector<StreamDescriptor>& streams, bool isPrimary) :
     m_filename(filename),
     m_file(nullptr),
     m_streamInfos(streams.size()),
@@ -95,7 +95,8 @@ TextParser<ElemType>::TextParser(CorpusDescriptorPtr corpus, const std::wstring&
     m_numAllowedErrors(0),
     m_skipSequenceIds(false),
     m_numRetries(5),
-    m_corpus(corpus)
+    m_corpus(corpus),
+    m_isPrimary(isPrimary)
 {
     assert(streams.size() > 0);
 
@@ -171,7 +172,7 @@ void TextParser<ElemType>::Initialize()
                 "UTF-16 encoding is currently not supported.", m_filename.c_str());
         }
 
-        m_indexer = make_unique<Indexer>(m_file, m_skipSequenceIds, m_chunkSizeBytes);
+        m_indexer = make_unique<Indexer>(m_file, m_isPrimary, m_skipSequenceIds, m_chunkSizeBytes);
 
         m_indexer->Build(m_corpus);
     });
@@ -1194,6 +1195,9 @@ std::wstring TextParser<ElemType>::GetFileInfo()
 template <class ElemType>
 bool TextParser<ElemType>::GetSequenceDescriptionByKey(const KeyType& key, SequenceDescription& result)
 {
+    if (m_isPrimary)
+        LogicError("Matching by sequence key is not supported for primary deserilalizer.");
+
     const auto& keys = m_indexer->GetIndex().m_keyToSequenceInChunk;
     auto sequenceLocation = keys.find(key.m_sequence);
     if (sequenceLocation == keys.end())

@@ -20,7 +20,7 @@ namespace Microsoft { namespace MSR { namespace CNTK {
 class Indexer 
 {
 public:
-    Indexer(FILE* file, bool skipSequenceIds = false, size_t chunkSize = 32 * 1024 * 1024);
+    Indexer(FILE* file, bool isPrimary, bool skipSequenceIds = false, size_t chunkSize = 32 * 1024 * 1024);
 
     // Reads the input file, building and index of chunks and corresponding
     // sequences.
