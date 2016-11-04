@@ -690,7 +690,7 @@ BOOST_AUTO_TEST_CASE(DefaultCorpusDescriptor)
 
     string randomKey(10, (char)distr(rng));
 
-    CorpusDescriptor corpus;
+    CorpusDescriptor corpus(false);
     BOOST_CHECK_EQUAL(true, corpus.IsIncluded(randomKey));
     BOOST_CHECK_EQUAL(true, corpus.IsIncluded(""));
 }
@@ -703,7 +703,7 @@ BOOST_AUTO_TEST_CASE(CorpusDescriptorFromFile)
     fwrite("4\n", sizeof(char), 2, test);
     fclose(test);
 
-    CorpusDescriptor corpus(L"test.tmp");
+    CorpusDescriptor corpus(L"test.tmp", true);
     BOOST_CHECK_EQUAL(false, corpus.IsIncluded("0"));
     BOOST_CHECK_EQUAL(true, corpus.IsIncluded("1"));
     BOOST_CHECK_EQUAL(true, corpus.IsIncluded("2"));

@@ -197,8 +197,6 @@ private:
 
     friend class CNTKTextFormatReaderTestRunner<ElemType>;
 
-    const std::string& GetSequenceKey(const SequenceDescriptor& s) const;
-
     DISABLE_COPY_AND_MOVE(TextParser);
 };
 }}}

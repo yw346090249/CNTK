@@ -29,10 +29,20 @@ namespace Microsoft { namespace MSR { namespace CNTK {
 // For more information please see its header file.
 // This method composes together packers + randomizer + a set of transformers and deserializers.
 CompositeDataReader::CompositeDataReader(const ConfigParameters& config) :
-    m_corpus(std::make_shared<CorpusDescriptor>()), m_truncationLength(0)
+    m_truncationLength(0)
 {
     wstring action = config(L"action", L"");
     bool isActionWrite = AreEqualIgnoreCase(action, L"write");
+
+    bool useNumericSequenceKeys = false;
+    if (config.Exists(L"useNumericSequenceKeys"))
+        useNumericSequenceKeys = config(L"useNumericSequenceKeys");
+    else
+    {
+        if (HasCNTKFormatDeserializer(config))
+            useNumericSequenceKeys = true;
+    }
+    m_corpus = std::make_shared<CorpusDescriptor>(useNumericSequenceKeys);
 
     // Identifying packing mode.
     bool frameMode = config(L"frameMode", false);
@@ -147,6 +157,21 @@ CompositeDataReader::CompositeDataReader(const ConfigParameters& config) :
     default:
         LogicError("Unsupported type of packer '%d'.", (int)m_packingMode);
     }
+}
+
+bool CompositeDataReader::HasCNTKFormatDeserializer(const ConfigParameters& readerConfig)
+{
+    argvector<ConfigValue> deserializerConfigs =
+            readerConfig(L"deserializers", ConfigParameters::Array(argvector<ConfigValue>(vector<ConfigValue> {})));
+
+    for (size_t i = 0; i < deserializerConfigs.size(); ++i)
+    {
+        ConfigParameters p = deserializerConfigs[i];
+        std::wstring deserializerType = p("type");
+        if (deserializerType == L"CNTKTextFormatDeserializer")
+            return true;
+    }
+    return false;
 }
 
 std::vector<StreamDescriptionPtr> CompositeDataReader::GetStreamDescriptions()

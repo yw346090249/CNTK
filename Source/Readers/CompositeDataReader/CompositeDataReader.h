@@ -70,6 +70,9 @@ private:
     IDataDeserializerPtr CreateDeserializer(const ConfigParameters& readerConfig, bool primary);
     TransformerPtr CreateTransformer(const ConfigParameters& config, const std::string& defaultModule, const std::wstring& transformerType);
 
+    // Checks if config for ctf exists.
+    // Currently, because it supports only numeric key ids we initialize it differently.
+    bool HasCNTKFormatDeserializer(const ConfigParameters& readerConfig);
 
     enum class PackingMode
     {
