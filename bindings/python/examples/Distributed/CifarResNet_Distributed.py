@@ -62,6 +62,9 @@ if __name__ == '__main__':
     distributed_trainer = distributed.data_parallel_distributed_trainer(
         num_quantization_bits=num_quantization_bits,
         parallelization_start_after_sample_count=warm_start_samples)
+        
+    import datetime
+    print("Start running at {}".format(datetime.datetime.now()))
 
     check_environ(distributed_trainer)
 
@@ -71,8 +74,9 @@ if __name__ == '__main__':
     # which means the all test samples would go through all workers and generates the same results
     reader_test  = create_reader(os.path.join(data_path, 'test_map.txt'), os.path.join(data_path, 'CIFAR-10_mean.xml'), False, 10000)
 
-    train_and_evaluate(reader_train, reader_test, max_epochs=160,
+    train_and_evaluate(reader_train, reader_test, max_epochs=5,
         distributed_trainer=distributed_trainer)
 
     # this is needed to avoid MPI hung in process termination indeterminism
     distributed.Communicator.finalize()
+    print("Finished at {}".format(datetime.datetime.now()))
