@@ -12,7 +12,7 @@
 import numpy as np
 import sys
 import os
-from cntk import distributed, device, persist
+from cntk import distributed, device
 from cntk.cntk_py import DeviceKind_GPU
 
 abs_path = os.path.dirname(os.path.abspath(__file__))
@@ -54,18 +54,22 @@ def check_environ(distributed_trainer):
     if gpu_count == 1 and len(workers) > 1 :
         print("Warning: running distributed training on 1-GPU will be slow")
         device.set_default_device(gpu(0))
-    
+        
 if __name__ == '__main__':
+    # creat the distributed trainer
     warm_start_samples = 50000
-    reader_train = create_reader(os.path.join(data_path, 'train_map.txt'), os.path.join(data_path, 'CIFAR-10_mean.xml'), True, warm_start_samples)
-    reader_test  = create_reader(os.path.join(data_path, 'test_map.txt'), os.path.join(data_path, 'CIFAR-10_mean.xml'), False)
-
     num_quantization_bits = 1
     distributed_trainer = distributed.data_parallel_distributed_trainer(
         num_quantization_bits=num_quantization_bits,
         parallelization_start_after_sample_count=warm_start_samples)
 
     check_environ(distributed_trainer)
-        
-    train_and_evaluate(reader_train, reader_test, max_epochs=160,
+
+    # train the model
+    reader_train = create_reader(os.path.join(data_path, 'train_map.txt'), os.path.join(data_path, 'CIFAR-10_mean.xml'), True, distributed_trainer.parallelization_start_after_sample_count)
+    # NOTE test data should not be distributed even when running with distributed trainer
+    # which means the all test samples would go through all workers and generates the same results
+    reader_test  = create_reader(os.path.join(data_path, 'test_map.txt'), os.path.join(data_path, 'CIFAR-10_mean.xml'), False, 10000)
+
+    train_and_evaluate(reader_train, reader_test, max_epochs=5,
         distributed_trainer=distributed_trainer)

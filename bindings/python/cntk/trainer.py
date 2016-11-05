@@ -203,3 +203,7 @@ class Trainer(cntk_py.Trainer):
         The number of samples in the last minibatch trained with
         '''
         return super(Trainer, self).previous_minibatch_sample_count()
+
+    @property
+    def is_running_distributed(self):
+        return super(Trainer, self).is_running_distributed()

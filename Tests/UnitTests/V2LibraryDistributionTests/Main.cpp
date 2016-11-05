@@ -36,7 +36,7 @@ bool Is1bitSGDAvailable()
 }
 
 // TODO: Move to other file.
-void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, DistributedTrainerPtr distributedTrainer, size_t rank, size_t parallelizationStartAfterSampleCount = 0)
+void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, DistributedTrainerPtr distributedTrainer, size_t rank)
 {
     const size_t inputDim = 2;
     const size_t numOutputClasses = 2;
@@ -50,7 +50,7 @@ void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, 
 
     auto featureStreamName = L"features";
     auto labelsStreamName = L"labels";
-    auto minibatchSource = TextFormatMinibatchSource(L"SimpleDataTrain_cntk_text.txt", { { featureStreamName, inputDim }, { labelsStreamName, numOutputClasses } }, MinibatchSource::FullDataSweep, false, parallelizationStartAfterSampleCount);
+    auto minibatchSource = TextFormatMinibatchSource(L"SimpleDataTrain_cntk_text.txt", { { featureStreamName, inputDim }, { labelsStreamName, numOutputClasses } }, MinibatchSource::FullDataSweep, false);
     auto featureStreamInfo = minibatchSource->StreamInfo(featureStreamName);
     auto labelStreamInfo = minibatchSource->StreamInfo(labelsStreamName);
 
@@ -86,14 +86,23 @@ void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, 
     }
 
     double learningRatePerSample = 0.02;
-    minibatchSource = TextFormatMinibatchSource(L"SimpleDataTrain_cntk_text.txt", { { L"features", inputDim }, { L"labels", numOutputClasses } });
+    size_t warmStartSamples = distributedTrainer->GetParallelizationStartAfterSampleCount();
+    minibatchSource = TextFormatMinibatchSource(L"SimpleDataTrain_cntk_text.txt", { { L"features", inputDim }, { L"labels", numOutputClasses } }, MinibatchSource::InfinitelyRepeat, true, warmStartSamples);
     Trainer trainer(classifierOutput, trainingLoss, prediction, { SGDLearner(classifierOutput->Parameters(), learningRatePerSample) }, distributedTrainer);
     size_t outputFrequencyInMinibatches = 20;
+    size_t trainingCheckpointFrequency = 100;
     for (size_t i = 0; i < numMinibatchesToTrain; ++i)
     {
         auto minibatchData = minibatchSource->GetNextMinibatch(minibatchSize, device);
         trainer.TrainMinibatch({ { input, minibatchData[featureStreamInfo].m_data }, { labels, minibatchData[labelStreamInfo].m_data } }, device);
         PrintTrainingProgress(trainer, i, outputFrequencyInMinibatches);
+
+        if ((i % trainingCheckpointFrequency) == (trainingCheckpointFrequency - 1))
+        {
+            const wchar_t* ckpName = L"feedForward.net";
+            trainer.SaveCheckpoint(ckpName);
+            trainer.RestoreFromCheckpoint(ckpName);
+        }
     }
 }
 
@@ -127,7 +136,7 @@ int main(int /*argc*/, char* /*argv*/[])
             size_t parallelizationStartAfterSampleCount = 100;
             auto communicator = QuantizedMPICommunicator(true, true, 1);
             auto distributedTrainer = CreateQuantizedDataParallelDistributedTrainer(communicator, false, parallelizationStartAfterSampleCount);
-            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), distributedTrainer, communicator->CurrentWorker().m_globalRank, parallelizationStartAfterSampleCount);
+            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), distributedTrainer, communicator->CurrentWorker().m_globalRank);
 
             if (IsGPUAvailable())
                 TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), distributedTrainer, communicator->CurrentWorker().m_globalRank);

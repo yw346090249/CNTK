@@ -192,6 +192,11 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, distributed_traine
 
     # perform model training
     for epoch in range(max_epochs):       # loop over epochs
+
+        # this helps debug consistency between trainer and minibatch source
+        # note that it maybe valid to be inconsistent if intended
+        assert reader_train.is_distributed == trainer.is_running_distributed
+
         sample_count = 0
         while sample_count < epoch_size:  # loop over minibatches in the epoch
             data = reader_train.next_minibatch(min(minibatch_size, epoch_size - sample_count), input_map=input_map) # fetch minibatch.

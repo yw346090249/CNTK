@@ -31,6 +31,11 @@ namespace CNTK
         virtual Dictionary GetCheckpointState() const override;
         virtual void RestoreFromCheckpoint(const Dictionary& checkpoint) override;
 
+        virtual bool IsDistributed() const override
+        {
+            return m_numWorkers > 1;
+        }
+
     private:
         static Microsoft::MSR::CNTK::InputStreamDescription GetInputStreamDescription(const StreamInformation& s, const DeviceDescriptor& device)
         {
@@ -44,7 +49,7 @@ namespace CNTK
     private: 
         std::unordered_set<StreamInformation> m_streamInfos;
         bool m_epochEndReached;
-        bool m_distributed;
+        size_t m_numWorkers;
         size_t m_parallelizationStartAfterSampleCount;
         size_t m_prevMinibatchSize;
         size_t m_epochSize;

@@ -1295,16 +1295,6 @@ namespace CNTK
             return m_data.m_sizeT;
         }
 
-        size_t ValueAsSizeT() const
-        {
-            // allow implicit type conversion from int to size_t, as python didn't differentiate them
-            if (m_valueType == Type::Int)
-                return static_cast<size_t>(m_data.m_int);
-
-            VerifyType<size_t>();
-            return m_data.m_sizeT;
-        }
-
         template <typename T, typename std::enable_if<std::is_same<T, float>::value>::type* = nullptr>
         const T& Value() const
         {
@@ -3281,6 +3271,11 @@ namespace CNTK
         CNTK_API double TestMinibatch(const std::unordered_map<Variable, ValuePtr>& arguments, const DeviceDescriptor& computeDevice = DeviceDescriptor::UseDefaultDevice());
 
         ///
+        /// Returns whether the trainer is running distributed (more than 1 MPI workers)
+        ///
+        CNTK_API bool IsRunningDistributed() const;
+
+        ///
         /// Checkpoint the model and other Trainer state at the specified file location
         ///
         CNTK_API void SaveCheckpoint(const std::wstring& filePath, bool usingLegacyModelFormat = true);
@@ -3339,7 +3334,7 @@ namespace CNTK
         std::vector<LearnerPtr> m_parameterLearners;
 
         size_t m_prevMinibatchNumSamples;
-        size_t m_parallelizationStartAfterSampleCount;
+        size_t m_totalSamplesSeen;
         ValuePtr m_prevMinibatchAggregateTrainingLossValue;
         ValuePtr m_prevMinibatchAggregateEvalCriterionValue;
     };
@@ -3409,6 +3404,11 @@ namespace CNTK
         virtual const std::unordered_map<StreamInformation, MinibatchData>& GetNextMinibatch(size_t minibatchSizeInSamples,
             size_t minibatchSizeInSequences,
             const DeviceDescriptor& device = DeviceDescriptor::UseDefaultDevice()) = 0;
+
+        ///
+        /// Returns whether the MinibatchSource is running in distributed manner
+        ///
+        virtual bool IsDistributed() const = 0;
 
         ///
         /// Destruct this MinibatchSource.
@@ -3676,7 +3676,7 @@ namespace CNTK
         size_t m_parallelizationStartAfterSampleCount;
     };
 
-    CNTK_API DistributedTrainerPtr CreateDataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t parallelizationStartAfterSampleCount=0);
+    CNTK_API DistributedTrainerPtr CreateDataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t parallelizationStartAfterSampleCount = 0);
 
     CNTK_API DistributedTrainerPtr CreateQuantizedDataParallelDistributedTrainer(QuantizedDistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t parallelizationStartAfterSampleCount);
 

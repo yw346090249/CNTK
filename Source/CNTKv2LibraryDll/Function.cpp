@@ -287,7 +287,7 @@ namespace CNTK
             if (!areVariablesEquivalent(correspondingLoadedModelVar, trainerModelLeafVar))
                 InvalidArgument("The loaded model's leaf variables do not match the trainer model's leaf variables");
 
-            if (trainerModelLeafVar.IsConstant() || trainerModelLeafVar.IsParameter())
+            if ((trainerModelLeafVar.IsConstant() && !Constant(trainerModelLeafVar).Value()->IsReadOnly()) || trainerModelLeafVar.IsParameter())
             {
                 auto trainerModelVarValue = trainerModelLeafVar.IsConstant() ? Constant(trainerModelLeafVar).Value() : Parameter(trainerModelLeafVar).Value();
                 auto loadedModelVarValue = correspondingLoadedModelVar.IsConstant() ? Constant(correspondingLoadedModelVar).Value() : Parameter(correspondingLoadedModelVar).Value();

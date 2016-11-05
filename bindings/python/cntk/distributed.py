@@ -72,7 +72,10 @@ class Communicator(cntk_py.DistributedCommunicator):
         
     @staticmethod
     def finalize():
-        cntk_py.DistributedCommunicator.finalize();
+        '''
+        calls MPI_Finalize(), and no more communication can happen afterwards
+        '''
+        cntk_py.DistributedCommunicator.finalize()
         
 class DistributedTrainer(cntk_py.DistributedTrainer):
     '''
@@ -88,6 +91,13 @@ class DistributedTrainer(cntk_py.DistributedTrainer):
             :class:`Communicator`: descriptor of current process.
         '''
         return super().get_communicator()
+        
+    @property
+    def parallelization_start_after_sample_count(self):
+        '''
+        number of samples to process, then parallelization starts
+		'''
+        return super().get_parallelization_start_after_sample_count()
 
 @typemap
 def data_parallel_distributed_trainer(use_async_buffered_parameter_update=False, num_quantization_bits=32, parallelization_start_after_sample_count=0):

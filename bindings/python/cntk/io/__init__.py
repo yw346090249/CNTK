@@ -8,7 +8,6 @@ from .. import cntk_py
 from ..utils import typemap
 from cntk import distributed
 from cntk.device import use_default_device
-import ctypes
 
 INFINITELY_REPEAT = cntk_py.MinibatchSource.infinitely_repeat
 FULL_DATA_SWEEP = cntk_py.MinibatchSource.full_data_sweep
@@ -179,6 +178,12 @@ class MinibatchSource(cntk_py.MinibatchSource):
         '''
         super(MinibatchSource, self).restore_from_checkpoint(checkpoint)
 
+    @property
+    def is_distributed(self):
+        '''
+        Whether running distributed
+        '''
+        return super(MinibatchSource, self).is_distributed()
 
 def _py_dict_to_cntk_dict(py_dict):
     '''
@@ -235,12 +240,12 @@ class ReaderConfig(dict):
 
     def __init__(self, deserializers=None, randomize=True, epoch_size=INFINITELY_REPEAT, parallelization_start_after_sample_count=0):
 
-        self['epochSize'] = epoch_size
+        self['epochSize'] = cntk_py.SizeTWrapper(epoch_size) # force to store in size_t
         if not isinstance(deserializers, (list, tuple)):
             deserializers = [deserializers]
         self['deserializers'] = self.deserializers = deserializers or []
         self['randomize'] = randomize
-        self['parallelizationStartAfterSampleCount'] = parallelization_start_after_sample_count
+        self['parallelizationStartAfterSampleCount'] = cntk_py.SizeTWrapper(parallelization_start_after_sample_count)
 
     @typemap
     def minibatch_source(self):

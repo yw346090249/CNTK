@@ -76,7 +76,7 @@ namespace CNTK
           m_prevMinibatchSize(0),
           m_epochSize(MinibatchSource::InfinitelyRepeat),
           m_truncationLength(0),
-          m_distributed(false),
+          m_numWorkers(1),
           m_parallelizationStartAfterSampleCount(0)
     {
         // The CNTK reader implementation requires for each deserializer both the module and deserializer type be specified
@@ -132,7 +132,7 @@ namespace CNTK
 
         const wchar_t* epochSizeConfigurationKey = L"epochSize";
         if (augmentedConfiguration.Contains(epochSizeConfigurationKey))
-            m_epochSize = augmentedConfiguration[epochSizeConfigurationKey].ValueAsSizeT();
+            m_epochSize = augmentedConfiguration[epochSizeConfigurationKey].Value<size_t>();
 
         if (m_epochSize == MinibatchSource::FullDataSweep)
             m_epochSize = Microsoft::MSR::CNTK::requestDataSize;
@@ -143,12 +143,12 @@ namespace CNTK
             augmentedConfiguration[truncatedConfigurationKey].Value<bool>() &&
             augmentedConfiguration.Contains(truncationLengthConfigurationKey))
         {
-            m_truncationLength = augmentedConfiguration[truncationLengthConfigurationKey].ValueAsSizeT();
+            m_truncationLength = augmentedConfiguration[truncationLengthConfigurationKey].Value<size_t>();
         }
 
         const wchar_t* parallelizationStartAfterSampleCountConfigurationKey = L"parallelizationStartAfterSampleCount";
         if (augmentedConfiguration.Contains(parallelizationStartAfterSampleCountConfigurationKey))
-            m_parallelizationStartAfterSampleCount = augmentedConfiguration[parallelizationStartAfterSampleCountConfigurationKey].ValueAsSizeT();
+            m_parallelizationStartAfterSampleCount = augmentedConfiguration[parallelizationStartAfterSampleCountConfigurationKey].Value<size_t>();
 
         typedef Reader*(*CreateCompositeDataReaderProc)(const ConfigParameters* parameters);
         CreateCompositeDataReaderProc createReaderProc = (CreateCompositeDataReaderProc)Plugin().Load(L"CompositeDataReader", "CreateCompositeDataReader");
@@ -185,10 +185,11 @@ namespace CNTK
             {
                 m_parallelizationStartAfterSampleCount -= std::min(m_parallelizationStartAfterSampleCount, m_prevMinibatchSize);
             }
-            bool wasDistributed = m_distributed;
-            m_distributed = (mpi != nullptr) && (m_parallelizationStartAfterSampleCount == 0);
+            size_t prevNumWorkers = m_numWorkers;
+            m_numWorkers = (mpi != nullptr && m_parallelizationStartAfterSampleCount == 0) ?
+                           mpi->NumNodesInUse() : 1;
 
-            if (wasDistributed != m_distributed)
+            if (prevNumWorkers != m_numWorkers)
             {
                 // when switching distributed mode, reset prevMinibatchSize
                 m_prevMinibatchSize = 0;
@@ -197,8 +198,8 @@ namespace CNTK
             if (m_prevMinibatchSize == 0)
             {
                 EpochConfiguration epochConfig;
-                epochConfig.m_numberOfWorkers = m_distributed ? mpi->NumNodesInUse() : 1;
-                epochConfig.m_workerRank = m_distributed ? mpi->CurrentNodeRank() : 0;
+                epochConfig.m_numberOfWorkers = m_numWorkers;
+                epochConfig.m_workerRank = (m_numWorkers > 1) ? mpi->CurrentNodeRank() : 0;
                 epochConfig.m_minibatchSizeInSamples = minibatchSizeInSamples;
                 epochConfig.m_truncationSize = m_truncationLength;
 
@@ -240,8 +241,8 @@ namespace CNTK
                     inputDescriptions[s.m_name] = AsCNTKImplDeviceId(device);
 
                 ReaderConfiguration newConfig;
-                newConfig.m_numberOfWorkers = m_distributed ? mpi->NumNodesInUse() : 1;
-                newConfig.m_workerRank = m_distributed ? mpi->CurrentNodeRank() : 0;
+                newConfig.m_numberOfWorkers = m_numWorkers;
+                newConfig.m_workerRank = (m_numWorkers > 1) ? mpi->CurrentNodeRank() : 0;
                 newConfig.m_minibatchSizeInSamples = minibatchSizeInSamples;
                 newConfig.m_truncationSize = m_truncationLength;
 

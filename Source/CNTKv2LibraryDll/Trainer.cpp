@@ -12,7 +12,7 @@
 namespace CNTK
 {
     Trainer::Trainer(const FunctionPtr& model, const FunctionPtr& lossFunction, const FunctionPtr& evaluationFunction, const std::vector<LearnerPtr>& parameterLearners, const DistributedTrainerPtr& distributedTrainer)
-        : m_model(model), m_lossFunction(lossFunction), m_evaluationFunction(evaluationFunction), m_parameterLearners(parameterLearners), m_prevMinibatchNumSamples(1), m_distributedTrainer(distributedTrainer)
+        : m_model(model), m_lossFunction(lossFunction), m_evaluationFunction(evaluationFunction), m_parameterLearners(parameterLearners), m_prevMinibatchNumSamples(1), m_distributedTrainer(distributedTrainer), m_totalSamplesSeen(0)
     {
         std::vector<Variable> combinedFunctionArgs = { m_model, m_lossFunction };
         if (!m_lossFunction->Output().DynamicAxes().empty())
@@ -67,11 +67,6 @@ namespace CNTK
         if (modelParametersSet != learnerParameters)
         {
             InvalidArgument("Trainer ctor: Union of the parameters covered by the specified parameterLearners should match the specified model's parameters");
-        }
-
-        if (m_distributedTrainer != nullptr)
-        {
-            m_parallelizationStartAfterSampleCount = m_distributedTrainer->GetParallelizationStartAfterSampleCount();
         }
     }
 
@@ -150,18 +145,23 @@ namespace CNTK
 
         outputs.insert(outputsToFetch.begin(), outputsToFetch.end());
 
+        bool wasDistributed = IsRunningDistributed();
+
         // when distributed trainer exists, parallelization starts after specified number of samples seen
         // before that, all workers run locally without aggregation (and minibatch source run locally as well)
         // NOTE that this relies on determinism on reader for all workers to reach the same state
         // TODO: pass the model/parameter from worker-0 to other workers when start parallelization
-        m_parallelizationStartAfterSampleCount -= std::min(m_parallelizationStartAfterSampleCount, m_prevMinibatchNumSamples);
+        m_totalSamplesSeen += m_prevMinibatchNumSamples;
 
-        bool shouldRunDistributed =
-            m_distributedTrainer && 
-            m_parallelizationStartAfterSampleCount == 0;
+        bool distributed = IsRunningDistributed();
 
-        if (shouldRunDistributed)
+        if (distributed)
+        {
+            // when switching from not distributed, all workers needs to sync up before starting cooperation
+            if (!wasDistributed) m_distributedTrainer->GetCommunicator()->Barrier();
+
             m_distributedTrainer->PreMinibatchCallback(*this);
+        }
 
         auto backPropSate = m_combinedTrainingFunction->Forward(arguments, outputs, computeDevice, { m_aggregatedLossFunction });
         m_prevMinibatchAggregateTrainingLossValue = outputs[m_aggregatedLossFunction];
@@ -191,7 +191,7 @@ namespace CNTK
 
         m_prevMinibatchNumSamples = GetSampleCount(m_trainingSampleCountVar, outputs[m_trainingSampleCountVar]);
 
-        if (shouldRunDistributed)
+        if (distributed)
         {
             // Aggregation should happen in the same order, the order of parmaters is guaranteed to be the same.
             std::vector<std::pair<Parameter, NDArrayViewPtr>> gradients;
@@ -229,6 +229,13 @@ namespace CNTK
         return anyUpdatesPerformed;
     }
 
+    bool Trainer::IsRunningDistributed() const
+    {
+        return m_distributedTrainer != nullptr &&
+            m_distributedTrainer->GetCommunicator()->Workers().size() > 1 &&
+            m_totalSamplesSeen >= m_distributedTrainer->GetParallelizationStartAfterSampleCount();
+    }
+
     static std::wstring GetTrainerStateCheckpointFilePath(const std::wstring& modelFilePath)
     {
         const wchar_t* checkpointExt = L".ckp";
@@ -245,7 +252,6 @@ namespace CNTK
             m_distributedTrainer->GetCommunicator()->Barrier();
 
             // for distributed training, only save checkpoint at worker 0
-            // TODO: save m_parallelizationStartAfterSampleCount to checkpoint
             shouldSave = m_distributedTrainer->GetCommunicator()->CurrentWorker().IsMain();
         }
     
@@ -259,12 +265,16 @@ namespace CNTK
             {
                 learnerStates.push_back(std::move(DictionaryValue(learner->Serialize())));
             }
-        
+
+            // append total samples seen to checkpoint
+            learnerStates.push_back(std::move(DictionaryValue(m_totalSamplesSeen)));
+
             std::wstring trainerStateCheckpointFilePath = GetTrainerStateCheckpointFilePath(modelFilePath);
             auto ckpStream = GetFstream(trainerStateCheckpointFilePath, false);
             // TODO: this will create an extra copy of all leaner states, 
             // add DictionaryValue ctor that takes an rvalue!
             *ckpStream << DictionaryValue(learnerStates);
+
             ckpStream->flush();
         }
 
@@ -288,17 +298,19 @@ namespace CNTK
 
         const vector<DictionaryValue>& learnerStates = checkpoint.Value<vector<DictionaryValue>>();
 
-        if (learnerStates.size() != m_parameterLearners.size())
+        if (learnerStates.size() != m_parameterLearners.size() + 1) // +1 for m_totalSamplesSeen
         {
             LogicError("Trainer::RestoreFromCheckpoint: "
                        "Number of learners in the checkpoint (%zu) does not match the expected number (%zu)",
                        learnerStates.size(), m_parameterLearners.size());
         }
 
-        for (int i = 0; i < m_parameterLearners.size(); ++i)
+        int i;
+        for (i = 0; i < m_parameterLearners.size(); ++i)
         {
             m_parameterLearners[i]->RestoreFromCheckpoint(learnerStates[i].Value<Dictionary>());
         }
+        m_totalSamplesSeen = learnerStates[i].Value<size_t>();
     }
 
     double Trainer::PreviousMinibatchLossAverage() const
