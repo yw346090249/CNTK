@@ -33,6 +33,9 @@ namespace CNTK
 
         virtual bool IsDistributed() const override
         {
+            if (m_numWorkers == 0)
+                LogicError("IsDistributed() can only be called after GetNextMinibatch()");
+
             return m_numWorkers > 1;
         }
 

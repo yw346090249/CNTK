@@ -71,5 +71,8 @@ if __name__ == '__main__':
     # which means the all test samples would go through all workers and generates the same results
     reader_test  = create_reader(os.path.join(data_path, 'test_map.txt'), os.path.join(data_path, 'CIFAR-10_mean.xml'), False, 10000)
 
-    train_and_evaluate(reader_train, reader_test, max_epochs=5,
+    train_and_evaluate(reader_train, reader_test, max_epochs=160,
         distributed_trainer=distributed_trainer)
+
+    # this is needed to avoid MPI hung in process termination indeterminism
+    distributed.Communicator.finalize()

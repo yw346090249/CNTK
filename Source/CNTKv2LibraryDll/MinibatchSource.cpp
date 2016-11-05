@@ -76,7 +76,7 @@ namespace CNTK
           m_prevMinibatchSize(0),
           m_epochSize(MinibatchSource::InfinitelyRepeat),
           m_truncationLength(0),
-          m_numWorkers(1),
+          m_numWorkers(0),
           m_parallelizationStartAfterSampleCount(0)
     {
         // The CNTK reader implementation requires for each deserializer both the module and deserializer type be specified
