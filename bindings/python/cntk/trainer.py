@@ -206,4 +206,7 @@ class Trainer(cntk_py.Trainer):
 
     @property
     def is_running_distributed(self):
+        '''
+        Whether the trainer is running distributed
+        '''
         return super(Trainer, self).is_running_distributed()

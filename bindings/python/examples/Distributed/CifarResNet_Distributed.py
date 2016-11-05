@@ -56,7 +56,7 @@ def check_environ(distributed_trainer):
         device.set_default_device(gpu(0))
         
 if __name__ == '__main__':
-    # creat the distributed trainer
+    # create the distributed trainer
     warm_start_samples = 50000
     num_quantization_bits = 1
     distributed_trainer = distributed.data_parallel_distributed_trainer(

@@ -181,7 +181,7 @@ class MinibatchSource(cntk_py.MinibatchSource):
     @property
     def is_distributed(self):
         '''
-        Whether running distributed
+        Whether the minibatch source is running distributed
         '''
         return super(MinibatchSource, self).is_distributed()
 
