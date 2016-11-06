@@ -1603,12 +1603,12 @@ public:
         Base::BeginForwardProp();
 
         const auto& m = Value();
-        fprintf(stderr, "BeginForwardProp: memory share trace: matrix %p used by node %S\n", &m, NodeName().c_str());
-
         if (m.m_owner != nullptr &&
             m.m_owner != this)
         {
-            fprintf(stderr, "!!!ERROR!!! potential memory sharing bug: matrix %p (owned by %S)\n", &m, ((ComputationNode<ElemType>*)m.m_owner)->NodeName().c_str());
+            fprintf(stderr, "!!!ERROR!!! potential memory sharing bug: matrix %p (owned by %S), used by %S\n", &m,
+                ((ComputationNode<ElemType>*)m.m_owner)->NodeName().c_str(),
+                this->NodeName().c_str());
         }
 
         // update the actual m_value allocation
@@ -1648,12 +1648,12 @@ public:
             Base::BeginBackprop();
 
             const auto& m = Gradient();
-            fprintf(stderr, "BeginBackprop: memory share trace: matrix %p used by node %p\n", &m, this);
-
             if (m.m_owner != nullptr &&
                 m.m_owner != this)
             {
-                fprintf(stderr, "!!!ERROR!!! potential memory sharing bug: matrix %p (owned by %p) used by node %p\n", &m, m.m_owner, this);
+                fprintf(stderr, "!!!ERROR!!! potential memory sharing bug: matrix %p (owned by %S), used by %S\n", &m,
+                    ((ComputationNode<ElemType>*)m.m_owner)->NodeName().c_str(),
+                    this->NodeName().c_str());
             }
         }
 #endif
