@@ -1602,6 +1602,15 @@ public:
     {
         Base::BeginForwardProp();
 
+        const auto& m = Value();
+        fprintf(stderr, "BeginForwardProp: memory share trace: matrix %p used by node %S\n", &m, NodeName().c_str());
+
+        if (m.m_owner != nullptr &&
+            m.m_owner != this)
+        {
+            fprintf(stderr, "!!!ERROR!!! potential memory sharing bug: matrix %p (owned by %S)\n", &m, ((ComputationNode<ElemType>*)m.m_owner)->NodeName().c_str());
+        }
+
         // update the actual m_value allocation
         if (!IsLeaf() && !RequiresPreCompute()) // TODO: guard this through overrides instead
             UpdateFunctionValuesSize();
@@ -1633,10 +1642,19 @@ public:
         Trace();
     }
 
-#if 0   // (keep it around in case we need to add stuff in the future)
+#if 1   // (keep it around in case we need to add stuff in the future)
         virtual void /*IComputationNode::*/BeginBackprop() override
         {
             Base::BeginBackprop();
+
+            const auto& m = Gradient();
+            fprintf(stderr, "BeginBackprop: memory share trace: matrix %p used by node %p\n", &m, this);
+
+            if (m.m_owner != nullptr &&
+                m.m_owner != this)
+            {
+                fprintf(stderr, "!!!ERROR!!! potential memory sharing bug: matrix %p (owned by %p) used by node %p\n", &m, m.m_owner, this);
+            }
         }
 #endif
 
@@ -1721,6 +1739,8 @@ public:
             RequestMatrixFromPool(m_value, matrixPool);
         else
             CreateMatrixIfNull(m_value);
+
+        m_value->m_owner = this;
     }
 
     // release temp matrices that are only used by forward computation
@@ -1744,6 +1764,7 @@ public:
     virtual void RequestMatricesBeforeBackprop(MatrixPool& matrixPool) override
     {
         RequestMatrixFromPool(m_gradient, matrixPool);
+        m_gradient->m_owner = this;
     }
 
     // release gradient and temp matrices that no longer needed after all the children's gradients are computed.
@@ -1800,6 +1821,7 @@ protected:
     {
         assert(matrixPtr != nullptr);
         matrixPool.Release<ElemType>(matrixPtr);
+        matrixPtr->m_owner = nullptr;
     }
 
 public:

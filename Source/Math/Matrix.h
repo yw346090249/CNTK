@@ -88,6 +88,8 @@ private:
     static void CopyElementsFromDenseToSparse(CPUMatrix<ElemType>& from, CPUSparseMatrix<ElemType>& dest);
 
 public:
+    void*   m_owner = nullptr; // pointer to owner node, for debugging memory sharing
+
     // Constructors, destructors and other static matrix builders
     // Each constructor can take deviceId as parameter.
     // If deviceId<0 then the matrix will be based in RAM (CPUMatrix)
