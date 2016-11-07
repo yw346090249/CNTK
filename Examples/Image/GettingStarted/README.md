@@ -1,4 +1,4 @@
-# CNTK Examples: Image/Getting Started
+# CNTK Example: Image - Getting Started
 
 ## Overview
 
