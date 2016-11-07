@@ -6,7 +6,7 @@ export MKL_NUM_THREADS=4
 export MKL_CBWR=COMPATIBLE
 export OMP_NUM_THREADS=1
 
-ConfigDir=$TEST_DIR/../../../../../../Examples/Image/GettingStarted
+ConfigDir=$TEST_DIR/../../../../../../Tutorials/ImageGettingStarted
 
 if [[ ! -d $TEST_DATA_DIR || ! -e $TEST_DATA_DIR/Train-28x28_cntk_text.txt || ! -e $TEST_DATA_DIR/Test-28x28_cntk_text.txt ]]; then
     # Cannot find test data locally.
