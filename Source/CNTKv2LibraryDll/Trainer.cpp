@@ -187,6 +187,7 @@ namespace CNTK
 
             MinibatchInfo info
             {
+                arguments.empty(),
                 m_prevMinibatchNumSamples,
                 m_prevMinibatchAggregateTrainingLossValue->Data(),
                 m_prevMinibatchAggregateEvalCriterionValue->Data()
@@ -195,6 +196,10 @@ namespace CNTK
             m_distributedTrainer->PreParameterUpdateCallback(*this, gradients, info);
             m_prevMinibatchNumSamples = info.numberOfSamples;
         }
+
+        // No more samples received. Exiting.
+        if (m_prevMinibatchNumSamples == 0)
+            return false;
 
         bool anyUpdatesPerformed = false;
         for (auto learner : m_parameterLearners)
