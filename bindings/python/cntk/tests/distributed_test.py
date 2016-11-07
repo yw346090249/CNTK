@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft. All rights reserved.
+﻿# Copyright (c) Microsoft. All rights reserved.
 
 # Licensed under the MIT license. See LICENSE.md file in the project root
 # for full license information.
@@ -28,9 +28,9 @@ def run_distributed_trainer(tmpdir, quantized):
     dist_trainer = distributed.data_parallel_distributed_trainer(
         use_async_buffered_parameter_update=False,
         num_quantization_bits=(1 if quantized else 32),
-        parallelization_start_after_sample_count=warm_start)
+        distributed_after=warm_start)
 
-    assert dist_trainer.parallelization_start_after_sample_count == warm_start
+    assert dist_trainer.distributed_after == warm_start
 
     communicator = dist_trainer.communicator()
     workers = communicator.workers()

@@ -68,8 +68,8 @@ namespace CNTK
         return MinibatchSourcePtr(new CompositeMinibatchSource(configuration));
     }
 
-    /*static*/ const std::wstring CompositeMinibatchSource::MinibatchSourcePositionAttributeName = L"minibatchSourcePosition";
-    /*static*/ const std::wstring CompositeMinibatchSource::MinibatchSourceParallelizationStartAfterSampleCountName = L"minibatchSourceParallelizationStartAfterSampleCount";
+    /*static*/ const std::wstring CompositeMinibatchSource::PositionAttributeName = L"minibatchSourcePosition";
+    /*static*/ const std::wstring CompositeMinibatchSource::DistributedAfterSampleCountAttributeName = L"minibatchDistributedAfterSampleCount";
 
     CompositeMinibatchSource::CompositeMinibatchSource(const Dictionary& configuration)
         : m_epochEndReached(false),
@@ -77,7 +77,7 @@ namespace CNTK
           m_epochSize(MinibatchSource::InfinitelyRepeat),
           m_truncationLength(0),
           m_numWorkers(0),
-          m_parallelizationStartAfterSampleCount(0)
+          m_distributedAfterSampleCount(MinibatchSource::InfiniteSamples)
     {
         // The CNTK reader implementation requires for each deserializer both the module and deserializer type be specified
         // This is redundant and the V2 API users will just specify type from which the module is automatically inferred
@@ -146,9 +146,9 @@ namespace CNTK
             m_truncationLength = augmentedConfiguration[truncationLengthConfigurationKey].Value<size_t>();
         }
 
-        const wchar_t* parallelizationStartAfterSampleCountConfigurationKey = L"parallelizationStartAfterSampleCount";
-        if (augmentedConfiguration.Contains(parallelizationStartAfterSampleCountConfigurationKey))
-            m_parallelizationStartAfterSampleCount = augmentedConfiguration[parallelizationStartAfterSampleCountConfigurationKey].Value<size_t>();
+        const wchar_t* distributedAfterSampleCountConfigurationKey = DistributedAfterSampleCountAttributeName.c_str();
+        if (augmentedConfiguration.Contains(distributedAfterSampleCountConfigurationKey))
+            m_distributedAfterSampleCount = augmentedConfiguration[distributedAfterSampleCountConfigurationKey].Value<size_t>();
 
         typedef Reader*(*CreateCompositeDataReaderProc)(const ConfigParameters* parameters);
         CreateCompositeDataReaderProc createReaderProc = (CreateCompositeDataReaderProc)Plugin().Load(L"CompositeDataReader", "CreateCompositeDataReader");
@@ -177,16 +177,23 @@ namespace CNTK
             if (minibatchSizeInSamples == 0)
                 InvalidArgument("GetNextMinibatch: Requested minibatch sizes must be > 0");
 
-            // For the first number of (m_parallelizationStartAfterSampleCount) samples, minibatch source won't run distributed
-            // and m_parallelizationStartAfterSampleCount would subtract previous minibatch sample count util zero
+            // For the first number of (m_distributedAfterSampleCount) samples, minibatch source won't run distributed
+            // and m_distributedAfterSampleCount would subtract previous minibatch sample count util zero
             // once it's zero and there's MPI instance, minibatch source runs in distributed manner
             MPIWrapperPtr mpi = MPIWrapper::GetInstance();
-            if (mpi != nullptr && m_parallelizationStartAfterSampleCount > 0)
+
+            if (mpi == nullptr && m_distributedAfterSampleCount != MinibatchSource::InfiniteSamples)
             {
-                m_parallelizationStartAfterSampleCount -= std::min(m_parallelizationStartAfterSampleCount, m_prevMinibatchSize);
+                // create mpi instance if intended to be distributed
+                mpi = MPIWrapper::GetInstance(true);
+            }
+
+            if (mpi != nullptr && m_distributedAfterSampleCount > 0)
+            {
+                m_distributedAfterSampleCount -= std::min(m_distributedAfterSampleCount, m_prevMinibatchSize);
             }
             size_t prevNumWorkers = m_numWorkers;
-            m_numWorkers = (mpi != nullptr && m_parallelizationStartAfterSampleCount == 0) ?
+            m_numWorkers = (mpi != nullptr && m_distributedAfterSampleCount == 0) ?
                            mpi->NumNodesInUse() : 1;
 
             if (prevNumWorkers != m_numWorkers)
@@ -291,15 +298,15 @@ namespace CNTK
     /*virtual*/ Dictionary CompositeMinibatchSource::GetCheckpointState() const /*override*/
     {
         Dictionary checkpointState;
-        checkpointState[MinibatchSourcePositionAttributeName] = m_shim->GetCurrentSamplePosition();
-        checkpointState[MinibatchSourceParallelizationStartAfterSampleCountName] = m_parallelizationStartAfterSampleCount;
+        checkpointState[PositionAttributeName] = m_shim->GetCurrentSamplePosition();
+        checkpointState[DistributedAfterSampleCountAttributeName] = m_distributedAfterSampleCount;
         return checkpointState;
     }
 
     /*virtual*/ void CompositeMinibatchSource::RestoreFromCheckpoint(const Dictionary& checkpoint) /*override*/
     {
-        auto checkpointedMinibatchSourcePosition = checkpoint[MinibatchSourcePositionAttributeName].Value<size_t>();
+        auto checkpointedMinibatchSourcePosition = checkpoint[PositionAttributeName].Value<size_t>();
         m_shim->SetCurrentSamplePosition(checkpointedMinibatchSourcePosition);
-        m_parallelizationStartAfterSampleCount = checkpoint[MinibatchSourceParallelizationStartAfterSampleCountName].Value<size_t>();
+        m_distributedAfterSampleCount = checkpoint[DistributedAfterSampleCountAttributeName].Value<size_t>();
     }
 }

@@ -11,6 +11,10 @@
 
 namespace CNTK
 {
+    // names for checkpoint attributes
+    static const wchar_t* LearnerStatesAttributeName = L"checkpointLearnerStates";
+    static const wchar_t* TotalSeenSamplesAttributeName = L"checkpointTotalSeenSamples";
+
     Trainer::Trainer(const FunctionPtr& model, const FunctionPtr& lossFunction, const FunctionPtr& evaluationFunction, const std::vector<LearnerPtr>& parameterLearners, const DistributedTrainerPtr& distributedTrainer)
         : m_model(model), m_lossFunction(lossFunction), m_evaluationFunction(evaluationFunction), m_parameterLearners(parameterLearners), m_prevMinibatchNumSamples(1), m_distributedTrainer(distributedTrainer), m_totalSamplesSeen(0)
     {
@@ -233,7 +237,7 @@ namespace CNTK
     {
         return m_distributedTrainer != nullptr &&
             m_distributedTrainer->GetCommunicator()->Workers().size() > 1 &&
-            m_totalSamplesSeen >= m_distributedTrainer->GetParallelizationStartAfterSampleCount();
+            m_totalSamplesSeen >= m_distributedTrainer->GetDistributedAfterSampleCount();
     }
 
     static std::wstring GetTrainerStateCheckpointFilePath(const std::wstring& modelFilePath)
@@ -259,6 +263,7 @@ namespace CNTK
         {
             m_combinedTrainingFunction->SaveModel(modelFilePath, usinglegacyModelFormat);
 
+            Dictionary trainerState;
             vector<DictionaryValue> learnerStates;
 
             for (const auto& learner : m_parameterLearners)
@@ -266,15 +271,14 @@ namespace CNTK
                 learnerStates.push_back(std::move(DictionaryValue(learner->Serialize())));
             }
 
-            // append total samples seen to checkpoint
-            learnerStates.push_back(std::move(DictionaryValue(m_totalSamplesSeen)));
+            trainerState[LearnerStatesAttributeName] = learnerStates;
+            trainerState[TotalSeenSamplesAttributeName] = m_totalSamplesSeen;
 
             std::wstring trainerStateCheckpointFilePath = GetTrainerStateCheckpointFilePath(modelFilePath);
             auto ckpStream = GetFstream(trainerStateCheckpointFilePath, false);
             // TODO: this will create an extra copy of all leaner states, 
             // add DictionaryValue ctor that takes an rvalue!
-            *ckpStream << DictionaryValue(learnerStates);
-
+            *ckpStream << trainerState;
             ckpStream->flush();
         }
 
@@ -293,24 +297,24 @@ namespace CNTK
 
         std::wstring trainerStateCheckpointFilePath = GetTrainerStateCheckpointFilePath(modelFilePath);
         auto ckpStream = GetFstream(trainerStateCheckpointFilePath, true);
-        DictionaryValue checkpoint;
+        Dictionary checkpoint;
         *ckpStream >> checkpoint;
 
-        const vector<DictionaryValue>& learnerStates = checkpoint.Value<vector<DictionaryValue>>();
+        m_totalSamplesSeen = checkpoint[TotalSeenSamplesAttributeName].Value<size_t>();
 
-        if (learnerStates.size() != m_parameterLearners.size() + 1) // +1 for m_totalSamplesSeen
+        const vector<DictionaryValue>& learnerStates = checkpoint[LearnerStatesAttributeName].Value<vector<DictionaryValue>>();
+
+        if (learnerStates.size() != m_parameterLearners.size())
         {
             LogicError("Trainer::RestoreFromCheckpoint: "
                        "Number of learners in the checkpoint (%zu) does not match the expected number (%zu)",
                        learnerStates.size(), m_parameterLearners.size());
         }
 
-        int i;
-        for (i = 0; i < m_parameterLearners.size(); ++i)
+        for (int i = 0; i < m_parameterLearners.size(); ++i)
         {
             m_parameterLearners[i]->RestoreFromCheckpoint(learnerStates[i].Value<Dictionary>());
         }
-        m_totalSamplesSeen = learnerStates[i].Value<size_t>();
     }
 
     double Trainer::PreviousMinibatchLossAverage() const

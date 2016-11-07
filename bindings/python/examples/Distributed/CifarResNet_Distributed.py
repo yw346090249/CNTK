@@ -61,22 +61,24 @@ if __name__ == '__main__':
     num_quantization_bits = 1
     distributed_trainer = distributed.data_parallel_distributed_trainer(
         num_quantization_bits=num_quantization_bits,
-        parallelization_start_after_sample_count=warm_start_samples)
+        distributed_after=warm_start_samples)
         
     import datetime
+    import time
     print("Start running at {}".format(datetime.datetime.now()))
+    start_time = time.time()
 
     check_environ(distributed_trainer)
 
     # train the model
-    reader_train = create_reader(os.path.join(data_path, 'train_map.txt'), os.path.join(data_path, 'CIFAR-10_mean.xml'), True, distributed_trainer.parallelization_start_after_sample_count)
+    reader_train = create_reader(os.path.join(data_path, 'train_map.txt'), os.path.join(data_path, 'CIFAR-10_mean.xml'), True, distributed_trainer.distributed_after)
     # NOTE test data should not be distributed even when running with distributed trainer
-    # which means the all test samples would go through all workers and generates the same results
-    reader_test  = create_reader(os.path.join(data_path, 'test_map.txt'), os.path.join(data_path, 'CIFAR-10_mean.xml'), False, 10000)
+    # which means the all test samples would go through all workers
+    reader_test  = create_reader(os.path.join(data_path, 'test_map.txt'), os.path.join(data_path, 'CIFAR-10_mean.xml'), False)
 
     train_and_evaluate(reader_train, reader_test, max_epochs=5,
         distributed_trainer=distributed_trainer)
 
     # this is needed to avoid MPI hung in process termination indeterminism
     distributed.Communicator.finalize()
-    print("Finished at {}".format(datetime.datetime.now()))
+    print("Finished at {}, total {} seconds".format(datetime.datetime.now(), time.time() - start_time))

@@ -86,7 +86,7 @@ void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, 
     }
 
     double learningRatePerSample = 0.02;
-    size_t warmStartSamples = distributedTrainer->GetParallelizationStartAfterSampleCount();
+    size_t warmStartSamples = distributedTrainer->GetDistributedAfterSampleCount();
     minibatchSource = TextFormatMinibatchSource(L"SimpleDataTrain_cntk_text.txt", { { L"features", inputDim }, { L"labels", numOutputClasses } }, MinibatchSource::InfinitelyRepeat, true, warmStartSamples);
     Trainer trainer(classifierOutput, trainingLoss, prediction, { SGDLearner(classifierOutput->Parameters(), learningRatePerSample) }, distributedTrainer);
     size_t outputFrequencyInMinibatches = 20;
@@ -133,9 +133,9 @@ int main(int /*argc*/, char* /*argv*/[])
     if (Is1bitSGDAvailable())
     {
         {
-            size_t parallelizationStartAfterSampleCount = 100;
+            size_t distributedAfterSampleCount = 100;
             auto communicator = QuantizedMPICommunicator(true, true, 1);
-            auto distributedTrainer = CreateQuantizedDataParallelDistributedTrainer(communicator, false, parallelizationStartAfterSampleCount);
+            auto distributedTrainer = CreateQuantizedDataParallelDistributedTrainer(communicator, false, distributedAfterSampleCount);
             TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), distributedTrainer, communicator->CurrentWorker().m_globalRank);
 
             if (IsGPUAvailable())

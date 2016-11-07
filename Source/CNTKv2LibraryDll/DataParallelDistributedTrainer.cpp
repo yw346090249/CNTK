@@ -21,9 +21,9 @@ namespace CNTK
         return MakeSharedObject<QuantizedMPICommunicatorImpl>(zeroThresholdFor1Bit, useQuantizationForSelfStripe, numQuantizationBits);
     }
 
-    DistributedTrainerPtr CreateQuantizedDataParallelDistributedTrainer(QuantizedDistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t parallelizationStartAfterSampleCount)
+    DistributedTrainerPtr CreateQuantizedDataParallelDistributedTrainer(QuantizedDistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t distributedAfterSampleCount)
     {
-        return MakeSharedObject<QuantizedDataParallelDistributedTrainer>(communicator, useAsyncBufferedParameterUpdate, parallelizationStartAfterSampleCount);
+        return MakeSharedObject<QuantizedDataParallelDistributedTrainer>(communicator, useAsyncBufferedParameterUpdate, distributedAfterSampleCount);
     }
 
     DistributedTrainerPtr CreateBlockMomentumDistributedTrainer(
@@ -32,7 +32,7 @@ namespace CNTK
         bool useNestrovMomentum,
         bool resetSGDMomentumAfterAggregation,
         double blockLearningRate,
-        size_t parallelizationStartAfterSampleCount)
+        size_t distributedAfterSampleCount)
     {
         return MakeSharedObject<BlockMomentumDistributedTrainer>(
             communicator,
@@ -40,7 +40,7 @@ namespace CNTK
             useNestrovMomentum,
             resetSGDMomentumAfterAggregation,
             blockLearningRate,
-            parallelizationStartAfterSampleCount);
+            distributedAfterSampleCount);
     }
 
     DistributedTrainerPtr CreateBlockMomentumDistributedTrainer(
@@ -50,7 +50,7 @@ namespace CNTK
         bool useNestrovMomentum,
         bool resetSGDMomentumAfterAggregation,
         double blockLearningRate,
-        size_t parallelizationStartAfterSampleCount)
+        size_t distributedAfterSampleCount)
     {
         return MakeSharedObject<BlockMomentumDistributedTrainer>(
             communicator,
@@ -59,7 +59,7 @@ namespace CNTK
             resetSGDMomentumAfterAggregation,
             blockLearningRate,
             blockMomentumAsTimeConstant,
-            parallelizationStartAfterSampleCount);
+            distributedAfterSampleCount);
     }
 
 #else
@@ -79,7 +79,7 @@ namespace CNTK
         bool /*useNestrovMomentum*/,
         bool /*resetSGDMomentumAfterAggregation*/,
         double /*blockLearningRate*/,
-        size_t /*parallelizationStartAfterSampleCount*/)
+        size_t /*distributedAfterSampleCount*/)
     {
         LogicError("Block Momentum Distributed Trainer is not supported for this build. The 1BitSGD build is needed, see CNTK wiki for details.");
     }
@@ -91,19 +91,19 @@ namespace CNTK
         bool /*useNestrovMomentum*/,
         bool /*resetSGDMomentumAfterAggregation*/,
         double /*blockLearningRate*/,
-        size_t /*parallelizationStartAfterSampleCount*/)
+        size_t /*distributedAfterSampleCount*/)
     {
         LogicError("Block Momentum Distributed Trainer is not supported for this build. The 1BitSGD build is needed, see CNTK wiki for details.");
     }
 #endif
 
-    DistributedTrainerPtr CreateDataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t parallelizationStartAfterSampleCount)
+    DistributedTrainerPtr CreateDataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t distributedAfterSampleCount)
     {
-        return MakeSharedObject<DataParallelDistributedTrainer>(communicator, useAsyncBufferedParameterUpdate, parallelizationStartAfterSampleCount);
+        return MakeSharedObject<DataParallelDistributedTrainer>(communicator, useAsyncBufferedParameterUpdate, distributedAfterSampleCount);
     }
 
-    DataParallelDistributedTrainer::DataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t parallelizationStartAfterSampleCount)
-        : DistributedTrainer(parallelizationStartAfterSampleCount),
+    DataParallelDistributedTrainer::DataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t distributedAfterSampleCount)
+        : DistributedTrainer(distributedAfterSampleCount),
         m_communicator(communicator),
         m_useAsyncBufferedParameterUpdate(useAsyncBufferedParameterUpdate)
     {

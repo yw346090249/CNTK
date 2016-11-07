@@ -16,8 +16,8 @@ namespace CNTK
 {
     class CompositeMinibatchSource final : public MinibatchSource
     {
-        static const std::wstring MinibatchSourcePositionAttributeName;
-        static const std::wstring MinibatchSourceParallelizationStartAfterSampleCountName;
+        static const std::wstring PositionAttributeName;
+        static const std::wstring DistributedAfterSampleCountAttributeName;
 
     public:
         CompositeMinibatchSource(const Dictionary& configuration);
@@ -53,7 +53,7 @@ namespace CNTK
         std::unordered_set<StreamInformation> m_streamInfos;
         bool m_epochEndReached;
         size_t m_numWorkers;
-        size_t m_parallelizationStartAfterSampleCount;
+        size_t m_distributedAfterSampleCount;
         size_t m_prevMinibatchSize;
         size_t m_epochSize;
         size_t m_truncationLength;

@@ -12,7 +12,7 @@ from cntk.blocks import default_options
 from cntk.layers import Convolution, MaxPooling, AveragePooling, Dropout, BatchNormalization, Dense
 from cntk.models import Sequential, LayerStack
 from cntk.utils import *
-from cntk.io import MinibatchSource, ImageDeserializer, StreamDef, StreamDefs
+from cntk.io import MinibatchSource, ImageDeserializer, StreamDef, StreamDefs, INFINITE_SAMPLES
 from cntk.initializer import glorot_uniform, he_normal
 from cntk import Trainer
 from cntk.learner import momentum_sgd, learning_rate_schedule, UnitType, momentum_as_time_constant_schedule
@@ -36,7 +36,7 @@ num_classes  = 10
 #
 # Define the reader for both training and evaluation action.
 #
-def create_reader(map_file, mean_file, train, parallelization_start_after_sample_count=0):
+def create_reader(map_file, mean_file, train, distributed_after=INFINITE_SAMPLES):
     if not os.path.exists(map_file) or not os.path.exists(mean_file):
         raise RuntimeError("File '%s' or '%s' does not exist. Please run install_cifar10.py from Examples/Image/DataSets/CIFAR-10 to fetch them" %
                            (map_file, mean_file))
@@ -55,7 +55,7 @@ def create_reader(map_file, mean_file, train, parallelization_start_after_sample
     return MinibatchSource(ImageDeserializer(map_file, StreamDefs(
         features = StreamDef(field='image', transforms=transforms), # first column in map file is referred to as 'image'
         labels   = StreamDef(field='label', shape=num_classes))),      # and second as 'label'
-        parallelization_start_after_sample_count = parallelization_start_after_sample_count)
+        distributed_after = distributed_after)
 
 #
 # Resnet building blocks

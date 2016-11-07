@@ -93,14 +93,14 @@ class DistributedTrainer(cntk_py.DistributedTrainer):
         return super().get_communicator()
         
     @property
-    def parallelization_start_after_sample_count(self):
+    def distributed_after(self):
         '''
         number of samples to process, then parallelization starts
 		'''
-        return super().get_parallelization_start_after_sample_count()
+        return super().get_distributed_after_sample_count()
 
 @typemap
-def data_parallel_distributed_trainer(use_async_buffered_parameter_update=False, num_quantization_bits=32, parallelization_start_after_sample_count=0):
+def data_parallel_distributed_trainer(use_async_buffered_parameter_update=False, num_quantization_bits=32, distributed_after=0):
     '''
     Creates a data parallel distributed trainer using `communicator` with
     option `use_async_buffered_parameter_update`.
@@ -116,9 +116,9 @@ def data_parallel_distributed_trainer(use_async_buffered_parameter_update=False,
         return cntk_py.create_quantized_data_parallel_distributed_trainer(
             cntk_py.quantized_mpicommunicator(True, True, num_quantization_bits),
             use_async_buffered_parameter_update,
-            parallelization_start_after_sample_count)
+            distributed_after)
     else:
         return cntk_py.create_data_parallel_distributed_trainer(
             cntk_py.mpicommunicator(),
             use_async_buffered_parameter_update,
-            parallelization_start_after_sample_count)
+            distributed_after)

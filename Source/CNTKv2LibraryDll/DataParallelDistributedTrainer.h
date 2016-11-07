@@ -15,7 +15,7 @@ namespace CNTK
     class DataParallelDistributedTrainer : public DistributedTrainer
     {
     public:
-        DataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t parallelizationStartAfterSampleCount);
+        DataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate, size_t distributedAfterSampleCount);
 
         // Optional override that gets called before each minbatch during training
         void PreMinibatchCallback(const Trainer& trainer) override;
