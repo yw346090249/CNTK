@@ -166,7 +166,7 @@ def sequence_to_sequence_translator(debug_output=False, run_test=False):
     # setup data
     rel_path = r"../../../../Examples/SequenceToSequence/CMUDict/Data/cmudict-0.7b.train-dev-20-21.ctf"
     train_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), rel_path)
-    valid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tiny.ctf")
+    valid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Data", "tiny.ctf")
 
     # readers
     randomize_data = True

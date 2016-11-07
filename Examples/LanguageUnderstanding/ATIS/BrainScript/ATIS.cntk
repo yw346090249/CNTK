@@ -2,7 +2,7 @@
 # An LSTM model is built to tag each word in sentences with its semantic label.
 
 WorkDir = work
-DataDir = data
+DataDir = ../Data
 
 makeMode = false
 modelPath = $WorkDir$/ATIS.slot.lstm
