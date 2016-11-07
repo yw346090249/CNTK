@@ -10,7 +10,9 @@ import os
 from cntk import Trainer, load_model
 from cntk.device import cpu, set_default_device
 from cntk.learner import sgd
-from cntk.ops import input_variable, constant, parameter, cross_entropy_with_softmax, classification_error, times
+from cntk.blocks import Placeholder, Constant
+from cntk.layers import Dense
+from cntk.ops import input_variable, constant, parameter, cross_entropy_with_softmax, classification_error, times, combine
 from cntk.ops import roipooling
 from cntk.ops.functions import CloneMethod
 from cntk.io import ReaderConfig, ImageDeserializer, CTFDeserializer, StreamConfiguration
@@ -89,38 +91,30 @@ def create_mb_source(features_stream_name, rois_stream_name, labels_stream_name,
 
 # Defines the Fast R-CNN network model for detecting objects in images
 def frcn_predictor(features, rois, num_classes):
-    # BS: network = BS.Network.Load("../../../../../PretrainedModels/AlexNet.model")
+    # Load the pretrained model and find nodes
     loaded_model = load_model("../../PretrainedModels/AlexNetBS.model", 'float')
+    feature_node = find_nodes_by_name(loaded_model, "features")
+    conv5_node   = find_nodes_by_name(loaded_model, "z.x._.x._.x.x_output")
+    pool3_node   = find_nodes_by_name(loaded_model, "z.x._.x._.x_output")
+    h2d_node     = find_nodes_by_name(loaded_model, "z.x_output")
 
-    # ??? is 'clone' used correctly here?
-    # BS: convLayers = BS.Network.CloneFunction(network.features, network.conv5_y, parameters="constant")
-    feature_node = find_nodes_by_name(loaded_model, "features") # ""network.features")
-    assert feature_node is not None
-    assert feature_node[0] is not None
-    # conv5_node = find_nodes_by_name(loaded_model, "z.x._.x._.x.x")
-    # conv5_node = find_nodes_by_name(loaded_model, "z.x._.x._.x.x_output")
-    conv5_node = find_nodes_by_name(loaded_model, "z_x___x___x_x")
-    assert conv5_node is not None
-    assert conv5_node[0] is not None
-    convLayers = loaded_model.clone(CloneMethod.freeze, {feature_node[0]: conv5_node[0]})
-    # BS: fcLayers = BS.Network.CloneFunction(network.pool3, network.h2_d)
-    pool3_node = find_nodes_by_name(loaded_model, "z_x___x___x")
-    h2d_node = find_nodes_by_name(loaded_model, "z_x")
-    fcLayers = loaded_model.clone(CloneMethod.clone, {pool3_node.output(): h2d_node.output()})
+    # Clone the conv layers of the network, i.e. from the input features up to the output of the 5th conv layer
+    conv_layers = combine([conv5_node[0].owner]).clone(CloneMethod.freeze, {feature_node[0]: Placeholder()})
 
-    # BS: featNorm = features - 114
-    featNorm = features - 114
-    # BS: convOut = convLayers(featNorm)
-    convOut = convLayers(featNorm)
-    # roiOut = ROIPooling(convOut, rois, (6:6))
-    roiOut = roipooling(convOut, rois, (6,6))
-    # BS: fcOut = fcLayers(roiOut)
-    fcOut = fcLayers(roiOut)
+    # Clone the fully connected layers, i.e. from the output of the last pooling layer to the output of the last dense layer
+    fc_layers = combine([h2d_node[0].owner]).clone(CloneMethod.clone, {pool3_node[0]: Placeholder()})
 
-    out_times_params = parameter(shape=(num_classes, 4096), init=glorot_uniform())
-    out_bias_params = parameter(shape=(num_classes), init=0)
-    t = times(fcOut, out_times_params)
-    return t + out_bias_params
+    # create Fast R-CNN model
+    feat_norm = features - Constant(114)
+    conv_out  = conv_layers(feat_norm)
+    roi_out   = roipooling(conv_out, rois, (6,6)) # rename to roi_max_pooling
+    fc_out    = fc_layers(roi_out)
+
+    #z = Dense((rois[0], num_classes), map_rank=1)(fc_out) --> map_rank=1 is not yet supported
+    W = parameter(shape=(4096, num_classes), init=glorot_uniform())
+    b = parameter(shape=(num_classes), init=0)
+    z = times(fc_out, W) + b
+    return z
 
 # Trains a Fast R-CNN network model on the grocery image dataset
 def frcn_grocery(base_path, debug_output=False):
@@ -142,9 +136,9 @@ def frcn_grocery(base_path, debug_output=False):
     labels_si = minibatch_source[labels_stream_name]
 
     # Input variables denoting features, rois and label data
-    image_input = input_variable((num_channels, image_height, image_width)) #, features_si.m_element_type)
-    roi_input = input_variable((4, num_rois)) #, features_si.m_element_type)               # ??? rois_si, was: features_si.m_element_type ?!
-    label_input = input_variable((num_classes, num_rois)) #, features_si.m_element_type) # ??? labels_si, was: features_si.m_element_type ?!
+    image_input = input_variable((num_channels, image_height, image_width), features_si.m_element_type)
+    roi_input = input_variable((num_rois, 4), rois_si.m_element_type)
+    label_input = input_variable((num_rois, num_classes), labels_si.m_element_type)
 
     # Instantiate the Fast R-CNN prediction model
     frcn_output = frcn_predictor(image_input, roi_input, num_classes)
