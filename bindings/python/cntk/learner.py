@@ -280,13 +280,21 @@ def momentum_as_time_constant_schedule(momentum, epoch_size=1):
                              cntk_py.momentum_as_time_constant_schedule)):
         return momentum
 
-    if isinstance(momentum, (int, float)):
+    if isinstance(momentum, (int, float, list)):
         return cntk_py.momentum_as_time_constant_schedule(momentum)
     if isinstance(momentum, list):
         return cntk_py.momentum_as_time_constant_schedule(momentum, epoch_size)
 
     raise ValueError('momentum must be either a float or a list, not %s'%type(momentum))
 
+# a helper method to convert input values to a proper momentum schedule
+def __get_proper_momentum_schedule(x):
+    if isinstance(x, (int, float)) and x >= 1:
+        return momentum_as_time_constant_schedule(x)
+    elif isinstance(x, list) and max(x) >= 1:
+        return momentum_as_time_constant_schedule(x)
+    else:
+        return momentum_schedule(x)
 
 # TODO figure out how to pass infty to C++ in a portable way
 @typemap
@@ -345,8 +353,9 @@ def momentum_sgd(parameters, lr, momentum,
          converted to a per-sample schedule by invoking `:func:learning_rate_schedule`.
         momentum (`float`, `list` or output of `:func:momentum_schedule` or 
          `:func:momentum_as_time_constant_schedule`): momentum schedule. When the argument 
-         value is a `float` or a `list`, momentum is converted to a per-sample schedule by 
-         invoking `:func:momentum_schedule`. Refer to 
+         value is a `float` or a `list`, momentum is converted to an appropriate momentum 
+         schedule: per-sample schedule when the actual value(-s) < 1 and time constant 
+         schedule when the actual value(-s) >= 1. For additional information, please refer to 
          https://github.com/Microsoft/CNTK/wiki/SGD-block#converting-learning-rate-and-momentum-parameters-from-other-toolkits
         l1_regularization_weight ('float', optional): the L1 regularization weight per sample,
          defaults to 0.0
@@ -362,7 +371,7 @@ def momentum_sgd(parameters, lr, momentum,
         Instance of a :class:`cntk.learner.Learner` that can be passed to the :class:`cntk.trainer.Trainer`
     '''
     lr = learning_rate_schedule(lr)
-    momentum = momentum_schedule(momentum)
+    momentum = __get_proper_momentum_schedule(momentum)
     gaussian_noise_injection_std_dev = training_parameter_schedule(gaussian_noise_injection_std_dev)
 
     additional_options = cntk_py.AdditionalLearningOptions()
@@ -391,8 +400,9 @@ def nesterov(parameters, lr, momentum,
          converted to a per-sample schedule by invoking `:func:learning_rate_schedule`.
         momentum (`float`, `list` or output of `:func:momentum_schedule` or 
          `:func:momentum_as_time_constant_schedule`): momentum schedule. When the argument 
-         value is a `float` or a `list`, momentum is converted to a per-sample schedule by 
-         invoking `:func:momentum_schedule`. Refer to 
+         value is a `float` or a `list`, momentum is converted to an appropriate momentum 
+         schedule: per-sample schedule when the actual value(-s) < 1 and time constant 
+         schedule when the actual value(-s) >= 1. For additional information, please refer to 
          https://github.com/Microsoft/CNTK/wiki/SGD-block#converting-learning-rate-and-momentum-parameters-from-other-toolkits
         l1_regularization_weight ('float', optional): the L1 regularization weight per sample,
          defaults to 0.0
@@ -408,7 +418,7 @@ def nesterov(parameters, lr, momentum,
         Instance of a :class:`cntk.learner.Learner` that can be passed to the :class:`cntk.trainer.Trainer`
     '''
     lr = learning_rate_schedule(lr)
-    momentum = momentum_schedule(momentum)
+    momentum = __get_proper_momentum_schedule(momentum)
     gaussian_noise_injection_std_dev = training_parameter_schedule(gaussian_noise_injection_std_dev)
 
     additional_options = cntk_py.AdditionalLearningOptions()
@@ -481,13 +491,14 @@ def adam_sgd(parameters, lr, momentum,
          converted to a per-sample schedule by invoking `:func:learning_rate_schedule`.
         momentum (`float`, `list` or output of `:func:momentum_schedule` or 
          `:func:momentum_as_time_constant_schedule`): momentum schedule. When the argument 
-         value is a `float` or a `list`, momentum is converted to a per-sample schedule by 
-         invoking `:func:momentum_schedule`. Refer to 
+         value is a `float` or a `list`, momentum is converted to an appropriate momentum 
+         schedule: per-sample schedule when the actual value(-s) < 1 and time constant 
+         schedule when the actual value(-s) >= 1. For additional information, please refer to 
          https://github.com/Microsoft/CNTK/wiki/SGD-block#converting-learning-rate-and-momentum-parameters-from-other-toolkits
         variance_momentum (`float`, `list` or output of `:func:momentum_schedule` or 
-         `:func:momentum_as_time_constant_schedule`): variance momentum schedule. When the argument 
-         value is a `float` or a `list`, variance momentum is converted to a per-sample schedule by 
-         invoking `:func:momentum_schedule`. Defaults to momentum_as_time_constant_schedule(720000).
+         `:func:momentum_as_time_constant_schedule`): variance momentum schedule. Similarly to 
+         momentum, `float` and `list` arguments converted to an appropriate momentum schedule. 
+         Defaults to momentum_as_time_constant_schedule(720000).
         l1_regularization_weight ('float', optional): the L1 regularization weight per sample,
          defaults to 0.0
         l2_regularization_weight ('float', optional): the L2 regularization weight per sample,
@@ -505,8 +516,8 @@ def adam_sgd(parameters, lr, momentum,
         raise NotImplementedError('adam: low_memory=True currently required')
 
     lr = learning_rate_schedule(lr)
-    momentum = momentum_schedule(momentum)
-    variance_momentum = momentum_schedule(variance_momentum)
+    momentum = __get_proper_momentum_schedule(momentum)
+    variance_momentum = __get_proper_momentum_schedule(variance_momentum)
     gaussian_noise_injection_std_dev = training_parameter_schedule(gaussian_noise_injection_std_dev)
 
     additional_options = cntk_py.AdditionalLearningOptions()

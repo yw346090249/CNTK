@@ -10,7 +10,7 @@ import os
 from cntk import Trainer, Axis, save_model, load_model #, text_format_minibatch_source, StreamConfiguration
 from cntk.io import MinibatchSource, CTFDeserializer, StreamDef, StreamDefs, INFINITELY_REPEAT, FULL_DATA_SWEEP
 from cntk.device import cpu, set_default_device
-from cntk.learner import momentum_sgd, momentum_as_time_constant_schedule
+from cntk.learner import momentum_sgd
 from cntk.ops import input_variable, cross_entropy_with_softmax, classification_error, sequence, slice, past_value, future_value, element_select, alias, hardmax
 from cntk.ops.functions import CloneMethod
 
@@ -154,7 +154,7 @@ def sequence_to_sequence_translator(debug_output=False, run_test=False):
     # Instantiate the trainer object to drive the model training
     lr_per_sample = 0.007
     minibatch_size = 72
-    momentum_time_constant = momentum_as_time_constant_schedule(1100)
+    momentum_time_constant = 1100
     clipping_threshold_per_sample = 2.3
     gradient_clipping_with_truncation = True
     learner = momentum_sgd(z.parameters, 

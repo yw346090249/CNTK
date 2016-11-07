@@ -15,7 +15,7 @@ from cntk.utils import *
 from cntk.io import MinibatchSource, ImageDeserializer, StreamDef, StreamDefs
 from cntk.initializer import glorot_uniform
 from cntk import Trainer
-from cntk.learner import momentum_sgd, learning_rate_schedule, UnitType, momentum_as_time_constant_schedule
+from cntk.learner import momentum_sgd, learning_rate_schedule, UnitType
 from cntk.ops import cross_entropy_with_softmax, classification_error, relu
 from cntk.ops import input_variable, constant, parameter, element_times
 
@@ -125,7 +125,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs):
 
     # Set learning parameters
     lr_per_minibatch       = learning_rate_schedule([0.01]*10 + [0.003]*10 + [0.001], epoch_size, UnitType.minibatch)
-    momentum_time_constant = momentum_as_time_constant_schedule(-minibatch_size/np.log(0.9))
+    momentum_time_constant = -minibatch_size/np.log(0.9)
     l2_reg_weight          = 0.0001
 
     # trainer object
