@@ -106,6 +106,7 @@ void ComputationNetwork::Save(const wstring& fileName, const FileOptions fileFor
 void ComputationNetwork::SaveToFileImpl(const wstring& fileName, const FileOptions fileFormat) const
 {
     File fstream(fileName, fileFormat | FileOptions::fileOptionsWrite);
+    fstream.Setvbuf();
     fstream.PutMarker(FileMarker::fileMarkerBeginSection, L"BCN");
 
     // model version

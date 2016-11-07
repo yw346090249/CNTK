@@ -650,6 +650,12 @@ int File::EndOfLineOrEOF(bool skip)
         return false;
 }
 
+// Buffer write stream
+int File::Setvbuf()
+{
+    return setvbuf(this->m_file, NULL, _IOFBF, 10 * 1024 * 1024);
+}
+
 // Get a marker from the file
 // some are ignored others are expecting characters
 // must use GetMarker methods for those that require parameters
