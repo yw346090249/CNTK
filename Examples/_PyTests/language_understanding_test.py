@@ -4,6 +4,7 @@
 # for full license information.
 # ==============================================================================
 
+import sys
 import numpy as np
 from cntk import DeviceDescriptor
 
@@ -13,7 +14,9 @@ from cntk.blocks import *
 from cntk.layers import *
 from cntk.models import *
 from cntk.utils import *
-from examples.LanguageUnderstanding.LanguageUnderstanding import data_dir, create_reader, create_model, train, emb_dim, hidden_dim, label_dim
+
+sys.path.append("../LanguageUnderstanding/ATIS/Python")
+from LanguageUnderstanding import data_dir, create_reader, create_model, train, emb_dim, hidden_dim, label_dim
 
 def create_test_model():
     # this selects additional nodes and alternative paths

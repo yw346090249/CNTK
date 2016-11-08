@@ -13,8 +13,8 @@ from cntk.learner import sgd
 from cntk.ops import input_variable, cross_entropy_with_softmax, classification_error
 
 abs_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(abs_path, "..", ".."))
-from examples.common.nn import LSTMP_component_with_self_stabilization, embedding, linear_layer, select_last, print_training_progress
+sys.path.append(os.path.join(abs_path, "..", "..", "..", "_PyTests", "common"))
+from nn import LSTMP_component_with_self_stabilization, embedding, linear_layer, select_last, print_training_progress
 
 # Creates the reader
 def create_reader(path, is_training, input_dim, label_dim):

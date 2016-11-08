@@ -20,9 +20,9 @@ from cntk.io import ReaderConfig, ImageDeserializer
 from cntk.initializer import he_normal, glorot_uniform
 
 abs_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(abs_path, "..", ".."))
-from examples.CifarResNet.CifarResNet import create_reader, create_resnet_model
-from examples.common.nn import conv_bn_relu_layer, conv_bn_layer, linear_layer, print_training_progress
+sys.path.append(os.path.join(abs_path, "..", "..", "..", "..", "_PyTests", "common"))
+from CifarResNet import create_reader, create_resnet_model
+from nn import conv_bn_relu_layer, conv_bn_layer, linear_layer, print_training_progress
 
 TRAIN_MAP_FILENAME = 'train_map.txt'
 MEAN_FILENAME = 'CIFAR-10_mean.xml'

@@ -4,18 +4,19 @@
 # for full license information.
 # ==============================================================================
 
+import sys
 import numpy as np
 from cntk.device import set_default_device
 
-from examples.Sequence2Sequence.Sequence2Sequence import sequence_to_sequence_translator
+sys.path.append("..")
+from FeedForwardNet import ffnet
 
-TOLERANCE_ABSOLUTE = 1E-1
+TOLERANCE_ABSOLUTE = 1E-03
 
-def test_sequence_to_sequence(device_id):
+def test_ffnet_error(device_id):
     from cntk.utils import cntk_device
     set_default_device(cntk_device(device_id))
 
-    error = sequence_to_sequence_translator(False, True)
-
-    expected_error =  0.827699
-    assert np.allclose(error, expected_error, atol=TOLERANCE_ABSOLUTE)
+    avg_error = ffnet()
+    expected_avg_error = 0.04
+    assert np.allclose(avg_error, expected_avg_error, atol=TOLERANCE_ABSOLUTE)

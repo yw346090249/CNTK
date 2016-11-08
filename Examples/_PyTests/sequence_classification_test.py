@@ -4,10 +4,12 @@
 # for full license information.
 # ==============================================================================
 
+import sys
 import numpy as np
 from cntk.device import set_default_device
 
-from examples.SequenceClassification.SequenceClassification import train_sequence_classifier
+sys.path.append("../SequenceClassification/ToyExample/Python")
+from SequenceClassification import train_sequence_classifier
 
 TOLERANCE_ABSOLUTE = 1E-1
 

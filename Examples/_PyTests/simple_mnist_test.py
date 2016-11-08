@@ -4,10 +4,12 @@
 # for full license information.
 # ==============================================================================
 
+import sys
 import numpy as np
 from cntk.device import set_default_device
 
-from examples.MNIST.SimpleMNIST import simple_mnist
+sys.path.append("../Image/Classification/MLP/Python")
+from SimpleMNIST import simple_mnist
 
 TOLERANCE_ABSOLUTE = 1E-1
 
