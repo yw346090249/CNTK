@@ -76,7 +76,7 @@ namespace CNTK
           m_prevMinibatchSize(0),
           m_epochSize(MinibatchSource::InfinitelyRepeat),
           m_truncationLength(0),
-          m_numWorkers(0),
+          m_numWorkers(1),
           m_distributedAfterSampleCount(MinibatchSource::InfiniteSamples)
     {
         // The CNTK reader implementation requires for each deserializer both the module and deserializer type be specified
@@ -146,7 +146,8 @@ namespace CNTK
             m_truncationLength = augmentedConfiguration[truncationLengthConfigurationKey].Value<size_t>();
         }
 
-        const wchar_t* distributedAfterSampleCountConfigurationKey = DistributedAfterSampleCountAttributeName.c_str();
+        // TODO: change all the dictionary names to string constants
+        const wchar_t* distributedAfterSampleCountConfigurationKey = L"distributedAfterSampleCount";
         if (augmentedConfiguration.Contains(distributedAfterSampleCountConfigurationKey))
             m_distributedAfterSampleCount = augmentedConfiguration[distributedAfterSampleCountConfigurationKey].Value<size_t>();
 
@@ -177,36 +178,25 @@ namespace CNTK
             if (minibatchSizeInSamples == 0)
                 InvalidArgument("GetNextMinibatch: Requested minibatch sizes must be > 0");
 
-            // For the first number of (m_distributedAfterSampleCount) samples, minibatch source won't run distributed
-            // and m_distributedAfterSampleCount would subtract previous minibatch sample count util zero
-            // once it's zero and there's MPI instance, minibatch source runs in distributed manner
-            MPIWrapperPtr mpi = MPIWrapper::GetInstance();
+            // For the first number of m_distributedAfterSampleCount samples, minibatch source won't run distributed.
 
-            if (mpi == nullptr && m_distributedAfterSampleCount != MinibatchSource::InfiniteSamples)
-            {
-                // create mpi instance if intended to be distributed
-                mpi = MPIWrapper::GetInstance(true);
-            }
-
-            if (mpi != nullptr && m_distributedAfterSampleCount > 0)
-            {
-                m_distributedAfterSampleCount -= std::min(m_distributedAfterSampleCount, m_prevMinibatchSize);
-            }
             size_t prevNumWorkers = m_numWorkers;
-            m_numWorkers = (mpi != nullptr && m_distributedAfterSampleCount == 0) ?
-                           mpi->NumNodesInUse() : 1;
-
-            if (prevNumWorkers != m_numWorkers)
+            if (IsDistributed())
             {
-                // when switching distributed mode, reset prevMinibatchSize
-                m_prevMinibatchSize = 0;
+                MPIWrapperPtr mpi = MPIWrapper::GetInstance();
+                if (mpi == nullptr)
+                {
+                    // create mpi instance if intended to be distributed
+                    mpi = MPIWrapper::GetInstance(true);
+                }
+                m_numWorkers = mpi->NumNodesInUse();
             }
 
             if (m_prevMinibatchSize == 0)
             {
                 EpochConfiguration epochConfig;
                 epochConfig.m_numberOfWorkers = m_numWorkers;
-                epochConfig.m_workerRank = (m_numWorkers > 1) ? mpi->CurrentNodeRank() : 0;
+                epochConfig.m_workerRank = (m_numWorkers > 1) ? MPIWrapper::GetInstance()->CurrentNodeRank() : 0;
                 epochConfig.m_minibatchSizeInSamples = minibatchSizeInSamples;
                 epochConfig.m_truncationSize = m_truncationLength;
 
@@ -241,7 +231,7 @@ namespace CNTK
                 m_prevMinibatchSize = minibatchSizeInSamples;
             }
 
-            if (minibatchSizeInSamples != m_prevMinibatchSize)
+            if (minibatchSizeInSamples != m_prevMinibatchSize || prevNumWorkers != m_numWorkers)
             {
                 std::map<std::wstring, int> inputDescriptions;
                 for (const auto& s : m_streamInfos)
@@ -249,7 +239,7 @@ namespace CNTK
 
                 ReaderConfiguration newConfig;
                 newConfig.m_numberOfWorkers = m_numWorkers;
-                newConfig.m_workerRank = (m_numWorkers > 1) ? mpi->CurrentNodeRank() : 0;
+                newConfig.m_workerRank = (m_numWorkers > 1) ? MPIWrapper::GetInstance()->CurrentNodeRank() : 0;
                 newConfig.m_minibatchSizeInSamples = minibatchSizeInSamples;
                 newConfig.m_truncationSize = m_truncationLength;
 

@@ -12,6 +12,7 @@ from cntk.cntk_py import DeviceKind_GPU
 from cntk.device import set_default_device
 from cntk.io import ReaderConfig, ImageDeserializer
 import pytest
+import subprocess
 
 from examples.Distributed.CifarResNet_Distributed import train_and_evaluate, create_reader
 
@@ -45,3 +46,6 @@ def test_cifar_resnet_distributed_error(device_id, is_1bit_sgd):
 
     assert np.allclose(test_error, expected_test_error,
                        atol=TOLERANCE_ABSOLUTE)
+
+    # test multi process
+    subprocess.check_call("mpiexec -n 2 python CifarResNet_Distributed.py", stderr=subprocess.STDOUT, shell=True)

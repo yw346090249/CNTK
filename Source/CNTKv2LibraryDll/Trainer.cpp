@@ -236,7 +236,9 @@ namespace CNTK
     bool Trainer::IsRunningDistributed() const
     {
         return m_distributedTrainer != nullptr &&
-            m_distributedTrainer->GetCommunicator()->Workers().size() > 1 &&
+            // TODO: only run distributed with more than 1-worker. 
+            // This is disabled now for V1 parity so that quantization would run for 1-worker
+            //m_distributedTrainer->GetCommunicator()->Workers().size() > 1 &&
             m_totalSamplesSeen >= m_distributedTrainer->GetDistributedAfterSampleCount();
     }
 
@@ -271,13 +273,11 @@ namespace CNTK
                 learnerStates.push_back(std::move(DictionaryValue(learner->Serialize())));
             }
 
-            trainerState[LearnerStatesAttributeName] = learnerStates;
+            trainerState[LearnerStatesAttributeName] = std::move(learnerStates);
             trainerState[TotalSeenSamplesAttributeName] = m_totalSamplesSeen;
 
             std::wstring trainerStateCheckpointFilePath = GetTrainerStateCheckpointFilePath(modelFilePath);
             auto ckpStream = GetFstream(trainerStateCheckpointFilePath, false);
-            // TODO: this will create an extra copy of all leaner states, 
-            // add DictionaryValue ctor that takes an rvalue!
             *ckpStream << trainerState;
             ckpStream->flush();
         }

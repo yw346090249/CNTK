@@ -100,13 +100,14 @@ class DistributedTrainer(cntk_py.DistributedTrainer):
         return super().get_distributed_after_sample_count()
 
 @typemap
-def data_parallel_distributed_trainer(use_async_buffered_parameter_update=False, num_quantization_bits=32, distributed_after=0):
+def data_parallel_distributed_trainer(num_quantization_bits=32, distributed_after=0, use_async_buffered_parameter_update=False):
     '''
     Creates a data parallel distributed trainer using `communicator` with
     option `use_async_buffered_parameter_update`.
 
     Args:
-        communicator: a communicator or a quantized communicator
+        num_quantization_bits (`int`): number of bits for quantization (1 to 32)
+        distributed_after (`int`): number of samples after which distributed training starts
         use_async_buffered_parameter_update (`bool`): use async buffered parameter update
 
     Returns:

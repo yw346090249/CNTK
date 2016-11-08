@@ -3535,6 +3535,7 @@ namespace CNTK
         deserializerConfiguration[L"input"] = inputStreamsConfig;
         minibatchSourceConfiguration[L"deserializers"] = std::vector<::CNTK::DictionaryValue>({ deserializerConfiguration });
 
+        //TODO: change all these dictionary names to string constants
         minibatchSourceConfiguration[L"distributedAfterSampleCount"] = distributedAfterSampleCount;
 
         return CreateCompositeMinibatchSource(minibatchSourceConfiguration);

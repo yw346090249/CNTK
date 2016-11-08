@@ -35,17 +35,18 @@ bool Is1bitSGDAvailable()
     return is1bitSGDAvailable;
 }
 
+const size_t minibatchSize = 25;
+
 // TODO: Move to other file.
-void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, DistributedTrainerPtr distributedTrainer, size_t rank)
+void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, DistributedTrainerPtr distributedTrainer, size_t rank, std::vector<double>* trainCE = nullptr, size_t ouputFreqMBInMinibatches = 20)
 {
     const size_t inputDim = 2;
     const size_t numOutputClasses = 2;
     const size_t hiddenLayerDim = 50;
     const size_t numHiddenLayers = 2;
 
-    const size_t minibatchSize = 25;
-    const size_t numSamplesPerSweep = 10000;
-    const size_t numSweepsToTrainWith = 2;
+    const size_t numSamplesPerSweep = 4000;
+    const size_t numSweepsToTrainWith = 1;
     const size_t numMinibatchesToTrain = (numSamplesPerSweep * numSweepsToTrainWith) / minibatchSize;
 
     auto featureStreamName = L"features";
@@ -69,7 +70,7 @@ void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, 
     classifierOutput = Plus(outputBiasParam, Times(outputTimesParam, classifierOutput), L"classifierOutput");
 
     auto labels = InputVariable({ numOutputClasses }, DataType::Float, L"labels");
-    auto trainingLoss = CNTK::CrossEntropyWithSoftmax(classifierOutput, labels, L"lossFunction");;
+    auto trainingLoss = CNTK::CrossEntropyWithSoftmax(classifierOutput, labels, L"lossFunction");
     auto prediction = CNTK::ClassificationError(classifierOutput, labels, L"classificationError");
 
     // Test save and reload of model
@@ -86,16 +87,21 @@ void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, 
     }
 
     double learningRatePerSample = 0.02;
-    size_t warmStartSamples = distributedTrainer->GetDistributedAfterSampleCount();
-    minibatchSource = TextFormatMinibatchSource(L"SimpleDataTrain_cntk_text.txt", { { L"features", inputDim }, { L"labels", numOutputClasses } }, MinibatchSource::InfinitelyRepeat, true, warmStartSamples);
+    size_t warmStartSamples = distributedTrainer ? distributedTrainer->GetDistributedAfterSampleCount() : MinibatchSource::InfiniteSamples;
+    minibatchSource = TextFormatMinibatchSource(L"SimpleDataTrain_cntk_text.txt", { { L"features", inputDim }, { L"labels", numOutputClasses } }, MinibatchSource::InfinitelyRepeat, false, warmStartSamples);
     Trainer trainer(classifierOutput, trainingLoss, prediction, { SGDLearner(classifierOutput->Parameters(), learningRatePerSample) }, distributedTrainer);
-    size_t outputFrequencyInMinibatches = 20;
     size_t trainingCheckpointFrequency = 100;
+    if (trainCE) trainCE->clear();
     for (size_t i = 0; i < numMinibatchesToTrain; ++i)
     {
         auto minibatchData = minibatchSource->GetNextMinibatch(minibatchSize, device);
         trainer.TrainMinibatch({ { input, minibatchData[featureStreamInfo].m_data }, { labels, minibatchData[labelStreamInfo].m_data } }, device);
-        PrintTrainingProgress(trainer, i, outputFrequencyInMinibatches);
+        PrintTrainingProgress(trainer, i, ouputFreqMBInMinibatches);
+
+        if ((i % ouputFreqMBInMinibatches) == 0 && trainCE)
+        {
+            trainCE->push_back(trainer.PreviousMinibatchLossAverage());
+        }
 
         if ((i % trainingCheckpointFrequency) == (trainingCheckpointFrequency - 1))
         {
@@ -122,6 +128,7 @@ int main(int /*argc*/, char* /*argv*/[])
     Internal::SetAutomaticUnpackingOfPackedValues(/*disable =*/ true);
 
     {
+        std::vector<double> CPUTrainCE;
         auto communicator = MPICommunicator();
         auto distributedTrainer = CreateDataParallelDistributedTrainer(communicator, false);
         TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), distributedTrainer, communicator->CurrentWorker().m_globalRank);
@@ -132,14 +139,58 @@ int main(int /*argc*/, char* /*argv*/[])
 
     if (Is1bitSGDAvailable())
     {
+        size_t ouputFreqMB = 20;
+
         {
-            size_t distributedAfterSampleCount = 100;
+            size_t distributedAfterMB = 100;
+
+            std::vector<double> nonDistCPUTrainCE;
+            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), nullptr, 0, &nonDistCPUTrainCE, ouputFreqMB);
+
+            std::vector<double> nonDistCPUTrainCE2;
+            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), nullptr, 0, &nonDistCPUTrainCE2, ouputFreqMB);
+
+            for (int i = 0; i < distributedAfterMB / ouputFreqMB; i++)
+            {
+                FloatingPointCompare(nonDistCPUTrainCE2[i], nonDistCPUTrainCE[i], "CPU training is not deterministic");
+            }
+
+            std::vector<double> CPUTrainCE;
+            size_t distributedAfterSampleCount = distributedAfterMB * minibatchSize;
             auto communicator = QuantizedMPICommunicator(true, true, 1);
             auto distributedTrainer = CreateQuantizedDataParallelDistributedTrainer(communicator, false, distributedAfterSampleCount);
-            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), distributedTrainer, communicator->CurrentWorker().m_globalRank);
+            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), distributedTrainer, communicator->CurrentWorker().m_globalRank, &CPUTrainCE, ouputFreqMB);
+    
+            for (int i = 0; i < distributedAfterMB / ouputFreqMB; i++)
+            {
+                FloatingPointCompare(CPUTrainCE[i], nonDistCPUTrainCE[i], "Warm start CE deviated from non-distributed");
+            }
 
             if (IsGPUAvailable())
-                TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), distributedTrainer, communicator->CurrentWorker().m_globalRank);
+            {
+                /*
+                // TODO: enable this. For some reason GPU results are not consistent
+                std::vector<double> nonDistGPUTrainCE;
+                TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), nullptr, 0, &nonDistGPUTrainCE, ouputFreqMB);
+
+                std::vector<double> nonDistGPUTrainCE2;
+                TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), nullptr, 0, &nonDistGPUTrainCE2, ouputFreqMB);
+
+                for (int i = 0; i < distributedAfterMB / ouputFreqMB; i++)
+                {
+                    FloatingPointCompare(nonDistGPUTrainCE2[i], nonDistGPUTrainCE[i], "GPU training is not deterministic");
+                }
+                */
+                std::vector<double> GPUTrainCE;
+                TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), distributedTrainer, communicator->CurrentWorker().m_globalRank, &GPUTrainCE, ouputFreqMB);
+
+                /*
+                for (int i = 0; i < distributedAfterMB / ouputFreqMB; i++)
+                {
+                    FloatingPointCompare(GPUTrainCE[i], nonDistGPUTrainCE[i], "Warm start CE deviated from non-distributed");
+                }
+                */
+            }
         }
 
         {

@@ -244,7 +244,6 @@ class ReaderConfig(dict):
         epoch_size (`int`): epoch size
         distributed_after (`int`): sample count after which reader becomes distributed
     '''
-
     def __init__(self, deserializers=None, randomize=True, epoch_size=INFINITELY_REPEAT, distributed_after=INFINITE_SAMPLES):
 
         self['epochSize'] = cntk_py.SizeTWrapper(epoch_size) # force to store in size_t
@@ -253,6 +252,11 @@ class ReaderConfig(dict):
         self['deserializers'] = self.deserializers = deserializers or []
         self['randomize'] = randomize
         self['distributedAfterSampleCount'] = cntk_py.SizeTWrapper(distributed_after)
+        # per Eldar's recommendation, enable multiThreadedDeserialization and 
+        # set randomizationWindow to 1 for image deserializer
+        if distributed_after != INFINITE_SAMPLES and deserializers != None and type(deserializers[0]) == ImageDeserializer:
+            self['multiThreadedDeserialization'] = True
+            self['randomizationWindow'] = 1
 
     @typemap
     def minibatch_source(self):
