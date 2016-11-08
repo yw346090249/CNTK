@@ -262,41 +262,13 @@ namespace CNTK
     /*virtual*/ Dictionary CompositeMinibatchSource::GetCheckpointState() const /*override*/
     {
         Dictionary checkpointState;
-        if (m_communicator)
-        {
-            // Saving position per worker.
-            std::vector<double> positions(m_communicator->Workers().size(), 0);
-            positions[m_communicator->CurrentWorker().m_globalRank] = (double)m_shim->GetCurrentSamplePosition();
-            NDArrayViewPtr data = std::make_shared<NDArrayView>(::CNTK::DataType::Double, NDShape{ positions.size() }, positions.data(), positions.size() * sizeof(double), DeviceDescriptor::CPUDevice());
-            std::vector<NDArrayViewPtr> input { data };
-            m_communicator->AggregateInPlace(input, m_communicator->Workers());
-
-            std::vector<DictionaryValue> checkpointPositions(positions.begin(), positions.end());
-            checkpointState[MinibatchSourcePositionAttributeName + L"Distributed"] = checkpointPositions;
-        }
-        else
-        {
-            checkpointState[MinibatchSourcePositionAttributeName] = m_shim->GetCurrentSamplePosition();
-        }
-
+        checkpointState[MinibatchSourcePositionAttributeName] = m_shim->GetCurrentSamplePosition();
         return checkpointState;
     }
 
     /*virtual*/ void CompositeMinibatchSource::RestoreFromCheckpoint(const Dictionary& checkpoint) /*override*/
     {
-        if (m_communicator)
-        {
-            // Restoring position per worker.
-            auto checkpointedMinibatchSourcePosition = checkpoint[MinibatchSourcePositionAttributeName].Value<std::vector<DictionaryValue>>();
-            if (m_communicator->CurrentWorker().m_globalRank < checkpointedMinibatchSourcePosition.size())
-                m_shim->SetCurrentSamplePosition((size_t)checkpointedMinibatchSourcePosition[m_communicator->CurrentWorker().m_globalRank].Value<double>());
-            else
-                m_shim->SetCurrentSamplePosition((size_t)checkpointedMinibatchSourcePosition.back().Value<double>());
-        }
-        else
-        {
-            auto checkpointedMinibatchSourcePosition = checkpoint[MinibatchSourcePositionAttributeName].Value<size_t>();
-            m_shim->SetCurrentSamplePosition(checkpointedMinibatchSourcePosition);
-        }
+        auto checkpointedMinibatchSourcePosition = checkpoint[MinibatchSourcePositionAttributeName].Value<size_t>();
+        m_shim->SetCurrentSamplePosition(checkpointedMinibatchSourcePosition);
     }
 }

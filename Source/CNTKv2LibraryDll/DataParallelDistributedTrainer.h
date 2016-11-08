@@ -21,13 +21,13 @@ namespace CNTK
         void PreMinibatchCallback(const Trainer& trainer) override;
 
         // Optional override that gets called per minibatch after finishing gradient computation but before updating model parameters
-        void PreParameterUpdateCallback(const Trainer& trainer, std::vector<std::pair<Parameter, NDArrayViewPtr>>& gradientValues, MinibatchInfo& info) override;
+        bool PreParameterUpdateCallback(const Trainer& trainer, std::vector<std::pair<Parameter, NDArrayViewPtr>>& gradientValues, MinibatchInfo& info) override;
 
         // Optionally overridable method to get checkpoint state associated with this Distributed train method
-        Dictionary GetCheckpointState() const override;
+        Dictionary CreateCheckpoint(const Trainer& trainer, const Dictionary& localStateToShare) override;
 
         // Optionally overridable method to restore state pertaining this distributed training method from a previous checkpoint
-        void RestoreFromCheckpoint(const Dictionary& checkpoint) override;
+        Dictionary RestoreFromCheckpoint(const Dictionary& checkpoint) override;
 
     private:
         DistributedCommunicatorPtr GetCommunicator() override

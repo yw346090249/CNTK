@@ -108,6 +108,8 @@ int main(int /*argc*/, char* /*argv*/[])
     }
 #endif
 
+    std::this_thread::sleep_for(std::chrono::seconds(15));
+
     // Lets disable automatic unpacking of PackedValue object to detect any accidental unpacking 
     // which will have a silent performance degradation otherwise
     Internal::SetAutomaticUnpackingOfPackedValues(/*disable =*/ true);

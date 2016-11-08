@@ -105,7 +105,7 @@ namespace CNTK
     }
 
     // Optional override that gets called per minibatch after finishing gradient computation but before updating model parameters
-    void DataParallelDistributedTrainer::PreParameterUpdateCallback(const Trainer& /*trainer*/, std::vector<std::pair<Parameter, NDArrayViewPtr>>& gradientValues, MinibatchInfo& info)
+    bool DataParallelDistributedTrainer::PreParameterUpdateCallback(const Trainer& /*trainer*/, std::vector<std::pair<Parameter, NDArrayViewPtr>>& gradientValues, MinibatchInfo& info)
     {
         std::vector<NDArrayViewPtr> valuesToAggregate;
         for (const auto& i : gradientValues)
@@ -118,7 +118,8 @@ namespace CNTK
 
         m_communicator->AggregateInPlace(valuesToAggregate, m_communicator->Workers());
 
-        info.numberOfSamples = static_cast<size_t>(*valuesToAggregate.back()->DataBuffer<double>());
+        info.numberOfSamples = static_cast<size_t>(*valuesToAggregate.back()->WritableDataBuffer<double>());
+        return info.numberOfSamples == 0;
     }
 
     // Optional override that gets called before each minbatch during training
@@ -127,15 +128,31 @@ namespace CNTK
     }
 
     // Optionally overridable method to get checkpoint state associated with this Distributed train method
-    Dictionary DataParallelDistributedTrainer::GetCheckpointState() const
+    Dictionary DataParallelDistributedTrainer::CreateCheckpoint(const Trainer&, const Dictionary& localStateToShare)
     {
-        // Currently we do not safe the state of the distributed trainer.
-        return Dictionary();
+        std::vector<DictionaryPtr> remoteState;
+        m_communicator->Gather(localStateToShare, remoteState, m_communicator->Workers());
+
+        Dictionary result;
+        for (size_t i = 0; i < m_communicator->Workers().size(); ++i)
+        {
+            result[std::to_wstring(i)] = *remoteState[i];
+        }
+
+        return result;
     }
 
     // Optionally overridable method to restore state pertaining this distributed training method from a previous checkpoint
-    void DataParallelDistributedTrainer::RestoreFromCheckpoint(const Dictionary& /*checkpoint*/)
+    Dictionary DataParallelDistributedTrainer::RestoreFromCheckpoint(const Dictionary& checkpoint)
     {
-        // Currently we do not safe the state of the distributed trainer.
+        auto key = std::to_wstring(m_communicator->CurrentWorker().m_globalRank);
+        if (checkpoint.Contains(key))
+            return checkpoint[key].Value<Dictionary>();
+
+        // Return 0 rank if possible.
+        key = std::to_wstring(0);
+        if (!checkpoint.Contains(key))
+            RuntimeError("Cannot restore from the checkpoint, 0 rank is missing.");
+        return checkpoint[key].Value<Dictionary>();
     }
 }
