@@ -97,8 +97,7 @@ namespace CNTK
     }
 
     DataParallelDistributedTrainer::DataParallelDistributedTrainer(DistributedCommunicatorPtr communicator, bool useAsyncBufferedParameterUpdate)
-        : m_communicator(communicator),
-        m_useAsyncBufferedParameterUpdate(useAsyncBufferedParameterUpdate)
+        : DistributedTrainerBase(communicator)
     {
         if (useAsyncBufferedParameterUpdate)
             LogicError("Asynchronous parameter update is not yet supported.");
@@ -120,39 +119,5 @@ namespace CNTK
 
         info.numberOfSamples = static_cast<size_t>(*valuesToAggregate.back()->WritableDataBuffer<double>());
         return info.numberOfSamples == 0;
-    }
-
-    // Optional override that gets called before each minbatch during training
-    void DataParallelDistributedTrainer::PreMinibatchCallback(const Trainer& /*trainer*/)
-    {
-    }
-
-    // Optionally overridable method to get checkpoint state associated with this Distributed train method
-    Dictionary DataParallelDistributedTrainer::CreateCheckpoint(const Trainer&, const Dictionary& localStateToShare)
-    {
-        std::vector<DictionaryPtr> remoteState;
-        m_communicator->Gather(localStateToShare, remoteState, m_communicator->Workers());
-
-        Dictionary result;
-        for (size_t i = 0; i < m_communicator->Workers().size(); ++i)
-        {
-            result[std::to_wstring(i)] = *remoteState[i];
-        }
-
-        return result;
-    }
-
-    // Optionally overridable method to restore state pertaining this distributed training method from a previous checkpoint
-    Dictionary DataParallelDistributedTrainer::RestoreFromCheckpoint(const Dictionary& checkpoint)
-    {
-        auto key = std::to_wstring(m_communicator->CurrentWorker().m_globalRank);
-        if (checkpoint.Contains(key))
-            return checkpoint[key].Value<Dictionary>();
-
-        // Return 0 rank if possible.
-        key = std::to_wstring(0);
-        if (!checkpoint.Contains(key))
-            RuntimeError("Cannot restore from the checkpoint, 0 rank is missing.");
-        return checkpoint[key].Value<Dictionary>();
     }
 }
