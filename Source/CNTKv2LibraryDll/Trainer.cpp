@@ -228,43 +228,41 @@ namespace CNTK
 
     void Trainer::SaveCheckpoint(const std::wstring& modelFilePath, bool usinglegacyModelFormat)
     {
-        bool shouldSave = true;
-        if (m_distributedTrainer != nullptr)
+        // TODO: Need to pass currect state of the minibatch source here.
+        if (!m_distributedTrainer)
+            return Save(modelFilePath, usinglegacyModelFormat, Dictionary());
+
+        assert(m_distributedTrainer != nullptr);
+
+        // TODO: Make sure checkpoints between distributed and non-distributed case are compatible.
+        Dictionary state = m_distributedTrainer->CreateCheckpoint(*this, Dictionary());
+        if (m_distributedTrainer->GetCommunicator()->CurrentWorker().IsMain())
+            Save(modelFilePath, usinglegacyModelFormat, state);
+
+        // all workers need to sync up after saving model to avoid read-after-write hazard
+        // i.e. one worker is in the middle of write while another tries to read
+        m_distributedTrainer->GetCommunicator()->Barrier();
+    }
+
+    void Trainer::Save(const std::wstring& modelFilePath, bool usinglegacyModelFormat, const Dictionary& distributedLearnerState)
+    {
+        vector<DictionaryValue> learnerStates;
+        for (const auto& learner : m_parameterLearners)
         {
-            // all workers need to sync up before saving model to avoid write-after-read hazard
-            // i.e. one worker is in the middle of reading a checkpoint while another overwrites
-            m_distributedTrainer->GetCommunicator()->Barrier();
-
-            // for distributed training, only save checkpoint at worker 0
-            shouldSave = m_distributedTrainer->GetCommunicator()->CurrentWorker().IsMain();
-        }
-    
-        if (shouldSave)
-        {
-            m_combinedTrainingFunction->SaveModel(modelFilePath, usinglegacyModelFormat);
-
-            vector<DictionaryValue> learnerStates;
-
-            for (const auto& learner : m_parameterLearners)
-            {
-                // TODO: add DictionaryValue(T&&)
-                learnerStates.push_back(DictionaryValue(learner->Serialize()));
-            }
-        
-            std::wstring trainerStateCheckpointFilePath = GetTrainerStateCheckpointFilePath(modelFilePath);
-            auto ckpStream = GetFstream(trainerStateCheckpointFilePath, false);
-            // TODO: this will create an extra copy of all leaner states, 
-            // add DictionaryValue ctor that takes an rvalue!
-            *ckpStream << DictionaryValue(learnerStates);
-            ckpStream->flush();
+            // TODO: add DictionaryValue(T&&)
+            learnerStates.push_back(DictionaryValue(learner->Serialize()));
         }
 
-        if (m_distributedTrainer != nullptr)
-        {
-            // all workers need to sync up after saving model to avoid read-after-write hazard
-            // i.e. one worker is in the middle of write while another tries to read
-            m_distributedTrainer->GetCommunicator()->Barrier();
-        }
+        // add DictionaryValue ctor that takes an rvalue!
+        Dictionary state;
+        state[L"Learners"] = learnerStates;
+        state[L"DistributedLearner"] = distributedLearnerState;
+
+        m_combinedTrainingFunction->SaveModel(modelFilePath, usinglegacyModelFormat);
+        std::wstring trainerStateCheckpointFilePath = GetTrainerStateCheckpointFilePath(modelFilePath);
+        auto ckpStream = GetFstream(trainerStateCheckpointFilePath, false);
+        *ckpStream << state;
+        ckpStream->flush();
     }
 
     void Trainer::RestoreFromCheckpoint(const std::wstring& modelFilePath)
@@ -274,10 +272,11 @@ namespace CNTK
 
         std::wstring trainerStateCheckpointFilePath = GetTrainerStateCheckpointFilePath(modelFilePath);
         auto ckpStream = GetFstream(trainerStateCheckpointFilePath, true);
-        DictionaryValue checkpoint;
+        Dictionary checkpoint;
         *ckpStream >> checkpoint;
 
-        const vector<DictionaryValue>& learnerStates = checkpoint.Value<vector<DictionaryValue>>();
+        const DictionaryValue& learners = checkpoint[L"Learners"];
+        const vector<DictionaryValue>& learnerStates = learners.Value<vector<DictionaryValue>>();
 
         if (learnerStates.size() != m_parameterLearners.size())
         {
@@ -289,6 +288,14 @@ namespace CNTK
         for (int i = 0; i < m_parameterLearners.size(); ++i)
         {
             m_parameterLearners[i]->RestoreFromCheckpoint(learnerStates[i].Value<Dictionary>());
+        }
+
+        // TODO: we should return shared state from this function,
+        // otherwise how can we be sure the minibatch source is in consistent state?
+        if (m_distributedTrainer)
+        {
+            const DictionaryValue& distributedLearner = checkpoint[L"DistributedLearner"];
+            m_distributedTrainer->RestoreFromCheckpoint(distributedLearner.Value<Dictionary>());
         }
     }
 

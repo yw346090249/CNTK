@@ -3355,6 +3355,8 @@ namespace CNTK
         const std::vector<LearnerPtr>& ParameterLearners() const { return m_parameterLearners; }
 
     private:
+        void Save(const std::wstring& modelFilePath, bool usinglegacyModelFormat, const Dictionary& state);
+
         FunctionPtr m_combinedTrainingFunction;
         FunctionPtr m_model;
         FunctionPtr m_lossFunction;
