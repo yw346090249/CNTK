@@ -16,4 +16,4 @@ Please refer to the Readme file in the corresponding folder for further details.
 |:------------------------|:-------------------------------------------------|:----------------|
 |Speech/AN4               | Speech data (CMU AN4)                            | FF and LSTM
 |Image/GettingStarted     | Image data (MNIST handwritten digit recognition) | CNN 
-|Text/PennTreebank        | Text data (penn treebank)                        | RNN
+|SeqToSeq/PennTreebank    | Text data (penn treebank)                        | RNN
