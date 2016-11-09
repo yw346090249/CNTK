@@ -14,8 +14,8 @@ from cntk.ops import input_variable, cross_entropy_with_softmax, classification_
 from cntk.utils import ProgressPrinter
 
 abs_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(abs_path, "..", ".."))
-from examples.common.nn import fully_connected_classifier_net
+sys.path.append(os.path.join(abs_path, "..", "..", "Tests", "EndToEndTests", "CNTKv2Python", "Examples", "common"))
+from nn import fully_connected_classifier_net
 
 # make sure we get always the same "randomness"
 np.random.seed(0)

@@ -15,7 +15,7 @@ from cntk.ops import input_variable, cross_entropy_with_softmax, classification_
 from cntk.ops.functions import CloneMethod
 
 abs_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(abs_path, "..", "..", "..", "_PyTests", "common"))
+sys.path.append(os.path.join(abs_path, "..", "..", "..", "..", "Tests", "EndToEndTests", "CNTKv2Python", "Examples", "common"))
 from nn import LSTMP_component_with_self_stabilization, stabilize, linear_layer, print_training_progress
 
 # Given a vocab and tensor, print the output
@@ -39,8 +39,7 @@ def find_arg_by_name(name, expression):
 # Average of evaluation errors of all test minibatches
 def translator_test_error(z, trainer, input_vocab_dim, label_vocab_dim, debug_output=False):
     # now setup a test run
-    rel_path = r"../../../../Examples/SequenceToSequence/CMUDict/Data/cmudict-0.7b.test.ctf"
-    test_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), rel_path)
+    test_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Data", "cmudict-0.7b.test.ctf")
 
     test_reader = create_reader(test_path, False, input_vocab_dim, label_vocab_dim, FULL_DATA_SWEEP)
 
@@ -164,8 +163,7 @@ def sequence_to_sequence_translator(debug_output=False, run_test=False):
     trainer = Trainer(z, ce, errs, learner)
 
     # setup data
-    rel_path = r"../../../../Examples/SequenceToSequence/CMUDict/Data/cmudict-0.7b.train-dev-20-21.ctf"
-    train_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), rel_path)
+    train_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Data", "cmudict-0.7b.train-dev-20-21.ctf")
     valid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Data", "tiny.ctf")
 
     # readers
@@ -180,8 +178,7 @@ def sequence_to_sequence_translator(debug_output=False, run_test=False):
     }
 
     # get the vocab for printing output sequences in plaintext
-    rel_path = r"../../../../Examples/SequenceToSequence/CMUDict/Data/cmudict-0.7b.mapping"
-    vocab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), rel_path)
+    vocab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Data", "cmudict-0.7b.mapping")
     vocab = [w.strip() for w in open(vocab_path).readlines()]
     i2w = { i:ch for i,ch in enumerate(vocab) }
 

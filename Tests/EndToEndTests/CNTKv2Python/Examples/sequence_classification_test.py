@@ -4,11 +4,12 @@
 # for full license information.
 # ==============================================================================
 
-import sys
+import os, sys
 import numpy as np
 from cntk.device import set_default_device
 
-sys.path.append("../SequenceClassification/ToyExample/Python")
+abs_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(abs_path, "..", "..", "..", "..", "Examples", "SequenceClassification", "SimpleExample", "Python"))
 from SequenceClassification import train_sequence_classifier
 
 TOLERANCE_ABSOLUTE = 1E-1

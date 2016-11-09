@@ -4,7 +4,7 @@
 # for full license information.
 # ==============================================================================
 
-import sys
+import os, sys
 import numpy as np
 from cntk import DeviceDescriptor
 
@@ -15,6 +15,8 @@ from cntk.layers import *
 from cntk.models import *
 from cntk.utils import *
 
+abs_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(abs_path, "..", "..", "..", "..", "Examples", "LanguageUnderstanding", "ATIS", "Python"))
 sys.path.append("../LanguageUnderstanding/ATIS/Python")
 from LanguageUnderstanding import data_dir, create_reader, create_model, train, emb_dim, hidden_dim, label_dim
 

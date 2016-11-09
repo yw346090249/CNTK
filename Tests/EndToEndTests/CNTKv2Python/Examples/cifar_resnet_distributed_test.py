@@ -13,7 +13,8 @@ from cntk.device import set_default_device
 from cntk.io import ReaderConfig, ImageDeserializer
 import pytest
 
-sys.path.append("../Image/Classification/ResNet/Python")
+abs_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(abs_path, "..", "..", "..", "..", "Examples", "Image", "Classification", "ResNet", "Python"))
 from CifarResNet_Distributed import train_and_evaluate, create_reader
 
 TOLERANCE_ABSOLUTE = 2E-1

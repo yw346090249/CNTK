@@ -4,11 +4,12 @@
 # for full license information.
 # ==============================================================================
 
-import sys
+import os, sys
 import numpy as np
 from cntk.device import set_default_device
 
-sys.path.append("../Image/Classification/MLP/Python")
+abs_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(abs_path, "..", "..", "..", "..", "Examples", "Image", "Classification", "MLP", "Python"))
 from SimpleMNIST import simple_mnist
 
 TOLERANCE_ABSOLUTE = 1E-1

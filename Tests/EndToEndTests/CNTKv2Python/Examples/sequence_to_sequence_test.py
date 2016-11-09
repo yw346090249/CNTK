@@ -4,11 +4,12 @@
 # for full license information.
 # ==============================================================================
 
-import sys
+import os, sys
 import numpy as np
 from cntk.device import set_default_device
 
-sys.path.append("../SequenceToSequence/ToyExample/Python")
+abs_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(abs_path, "..", "..", "..", "..", "Examples", "SequenceToSequence", "CMUDict", "Python"))
 from Sequence2Sequence import sequence_to_sequence_translator
 
 TOLERANCE_ABSOLUTE = 1E-1

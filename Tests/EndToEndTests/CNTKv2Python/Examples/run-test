@@ -7,10 +7,10 @@ python -c "import numpy; print('NumPy: %s'%numpy.version.full_version)"
 python -c "import scipy; print('SciPy: %s'%scipy.version.full_version)"
 python -c "import pytest; print('PyTest: %s'%pytest.__version__)"
 
-EXAMPLES_DIR=$TEST_ROOT_DIR/../../Examples/_PyTests
+#EXAMPLES_DIR=$TEST_ROOT_DIR/../../Examples/_PyTests
 
-pushd $EXAMPLES_DIR || exit $?
-echo Current dir: $PWD
+#pushd $EXAMPLES_DIR || exit $?
+#echo Current dir: $PWD
 
 py.test --deviceid $TEST_DEVICE
 
