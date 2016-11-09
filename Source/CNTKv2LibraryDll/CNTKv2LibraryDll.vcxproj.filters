@@ -21,7 +21,6 @@
     </ClCompile>
     <ClCompile Include="DistributedCommunicator.cpp" />
     <ClCompile Include="DataParallelDistributedTrainer.cpp" />
-    <ClCompile Include="Globals.cpp" />
     <ClCompile Include="DistributedTrainerBase.cpp" />
   </ItemGroup>
   <ItemGroup>
