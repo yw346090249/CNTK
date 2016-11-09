@@ -65,8 +65,8 @@ void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, 
     for (size_t i = 1; i < numHiddenLayers; ++i)
         classifierOutput = FullyConnectedDNNLayer(classifierOutput, hiddenLayerDim, device, nonLinearity, std::wstring(L"FullyConnectedHidden"));
 
-    auto outputTimesParam = Parameter(NDArrayView::RandomUniform<float>({ numOutputClasses, hiddenLayerDim }, -0.05, 0.05, 1, device), L"outputTimesParam");
-    auto outputBiasParam = Parameter(NDArrayView::RandomUniform<float>({ numOutputClasses }, -0.05, 0.05, 1, device), L"outputBiasParam");
+    auto outputTimesParam = Parameter({ numOutputClasses, hiddenLayerDim }, DataType::Float, UniformInitializer(CNTK::DefaultParamInitScale, 1), device, L"outputTimesParam");
+    auto outputBiasParam = Parameter({ numOutputClasses }, DataType::Float, UniformInitializer(CNTK::DefaultParamInitScale, 1), device, L"outputBiasParam");
     classifierOutput = Plus(outputBiasParam, Times(outputTimesParam, classifierOutput), L"classifierOutput");
 
     auto labels = InputVariable({ numOutputClasses }, DataType::Float, L"labels");
@@ -168,8 +168,6 @@ int main(int /*argc*/, char* /*argv*/[])
 
             if (IsGPUAvailable())
             {
-                /*
-                // TODO: enable this. For some reason GPU results are not consistent
                 std::vector<double> nonDistGPUTrainCE;
                 TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), nullptr, 0, &nonDistGPUTrainCE, ouputFreqMB);
 
@@ -180,16 +178,14 @@ int main(int /*argc*/, char* /*argv*/[])
                 {
                     FloatingPointCompare(nonDistGPUTrainCE2[i], nonDistGPUTrainCE[i], "GPU training is not deterministic");
                 }
-                */
+
                 std::vector<double> GPUTrainCE;
                 TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), distributedTrainer, communicator->CurrentWorker().m_globalRank, &GPUTrainCE, ouputFreqMB);
 
-                /*
                 for (int i = 0; i < distributedAfterMB / ouputFreqMB; i++)
                 {
                     FloatingPointCompare(GPUTrainCE[i], nonDistGPUTrainCE[i], "Warm start CE deviated from non-distributed");
                 }
-                */
             }
         }
 
