@@ -3,7 +3,7 @@ CPU info:
     Hardware threads: 24
     Total Memory: 264172964 kB
 -------------------------------------------------------------------
-=== Running /home/philly/jenkins/workspace/CNTK-Test-Linux-W1/build/gpu/release/bin/cntk configFile=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d/Config/OneHidden.cntk currentDirectory=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data RunDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu DataDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data ConfigDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d/Config OutputDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu DeviceId=0 timestamping=true Simple_Demo_Train=[SGD=[maxEpochs=3]]
+=== Running /home/philly/jenkins/workspace/CNTK-Test-Linux-W1/build/gpu/release/bin/cntk configFile=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d/OneHidden.cntk currentDirectory=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data RunDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu DataDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data ConfigDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d OutputDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu DeviceId=0 timestamping=true Simple_Demo_Train=[SGD=[maxEpochs=3]]
 -------------------------------------------------------------------
 Build info: 
 
@@ -50,7 +50,7 @@ Changed current directory to /home/philly/jenkins/workspace/CNTK-Test-Linux-W1/T
 
 08/16/2016 10:51:40: Running on localhost at 2016/08/16 10:51:40
 08/16/2016 10:51:40: Command line: 
-/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/build/gpu/release/bin/cntk  configFile=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d/Config/OneHidden.cntk  currentDirectory=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data  RunDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu  DataDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data  ConfigDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d/Config  OutputDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu  DeviceId=0  timestamping=true  Simple_Demo_Train=[SGD=[maxEpochs=3]]
+/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/build/gpu/release/bin/cntk  configFile=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d/OneHidden.cntk  currentDirectory=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data  RunDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu  DataDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data  ConfigDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d  OutputDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu  DeviceId=0  timestamping=true  Simple_Demo_Train=[SGD=[maxEpochs=3]]
 
 
 
@@ -145,7 +145,7 @@ sequenceEpilogue = "\t// %s\n"
 currentDirectory=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data
 RunDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu
 DataDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data
-ConfigDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d/Config
+ConfigDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d
 OutputDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu
 DeviceId=0
 timestamping=true
@@ -244,7 +244,7 @@ sequenceEpilogue = "\t// %s\n"
 currentDirectory=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data
 RunDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu
 DataDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data
-ConfigDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d/Config
+ConfigDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d
 OutputDir=/tmp/cntk-test-20160816095502.258817/Tests/EndToEndTests/Simple2d_Simple@release_gpu
 DeviceId=0
 timestamping=true
@@ -254,7 +254,7 @@ Simple_Demo_Train=[SGD=[maxEpochs=3]]
 
 08/16/2016 10:51:40: >>>>>>>>>>>>>>>>>>>> PROCESSED CONFIG WITH ALL VARIABLES RESOLVED >>>>>>>>>>>>>>>>>>>>
 configparameters: OneHidden.cntk:command=Simple_Demo_Train:Simple_Demo_Test:Simple_Demo_Output
-configparameters: OneHidden.cntk:ConfigDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d/Config
+configparameters: OneHidden.cntk:ConfigDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Tests/EndToEndTests/Simple2d/Simple/../../../../../../Tests/EndToEndTests/Simple2d
 configparameters: OneHidden.cntk:currentDirectory=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data
 configparameters: OneHidden.cntk:DataDir=/home/philly/jenkins/workspace/CNTK-Test-Linux-W1/Tests/EndToEndTests/Simple2d/Data
 configparameters: OneHidden.cntk:deviceId=0

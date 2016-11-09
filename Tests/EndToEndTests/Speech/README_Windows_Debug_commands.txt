@@ -65,7 +65,7 @@ COMMAND:     configFile=$(SolutionDir)Tests/EndToEndTests/Image/QuickE2E/cntk.cn
 
 --- Tests/EndToEndTests/Simple2d:
 
-COMMAND:     configFile=$(SolutionDir)Tests/EndToEndTests/Simple2d/Config/OneHidden.cntk  RunDir=$(SolutionDir)Tests/EndToEndTests/Simple2d/_run  DataDir=$(SolutionDir)Tests/EndToEndTests/Simple2d/Data  ConfigDir=$(SolutionDir)Tests/EndToEndTests/Simple2d/Config  stderr=$(SolutionDir)Tests/EndToEndTests/Simple2d/_run/Simple.log  DeviceId=0  useCuDnn=false   makeMode=false
+COMMAND:     configFile=$(SolutionDir)Tests/EndToEndTests/Simple2d/OneHidden.cntk  RunDir=$(SolutionDir)Tests/EndToEndTests/Simple2d/_run  DataDir=$(SolutionDir)Tests/EndToEndTests/Simple2d/Data  ConfigDir=$(SolutionDir)Tests/EndToEndTests/Simple2d  stderr=$(SolutionDir)Tests/EndToEndTests/Simple2d/_run/Simple.log  DeviceId=0  useCuDnn=false   makeMode=false
 
 --- Text/RNN:
 

@@ -25,11 +25,11 @@ COMMAND:  configFile=$(SolutionDir)\Examples\Image\MNIST\Config/03_ConvBatchNorm
 
 --- Tests/EndToEndTests/Simple2d/MultiGpu 
 
-COMMAND:  configFile=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Config/Multigpu.config currentDirectory=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Data RunDir=$(SolutionDir)\Tests\EndToEndTests\Tests\EndToEndTests\Simple2d_MultiGpu@debug_gpu DataDir=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Data ConfigDir=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Config OutputDir=$(SolutionDir)\Tests\EndToEndTests\Tests\EndToEndTests\Simple2d_MultiGpu@debug_gpu DeviceId=0 Multigpu_Demo_Train=[SGD=[maxEpochs=1]] Multigpu_Demo_Train=[SGD=[epochSize=100]] Multigpu_Demo_Train=[reader=[randomize=none]]
+COMMAND:  configFile=$(SolutionDir)\Tests\EndToEndTests\Simple2d/Multigpu.config currentDirectory=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Data RunDir=$(SolutionDir)\Tests\EndToEndTests\Tests\EndToEndTests\Simple2d_MultiGpu@debug_gpu DataDir=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Data ConfigDir=$(SolutionDir)\Tests\EndToEndTests\Simple2d OutputDir=$(SolutionDir)\Tests\EndToEndTests\Tests\EndToEndTests\Simple2d_MultiGpu@debug_gpu DeviceId=0 Multigpu_Demo_Train=[SGD=[maxEpochs=1]] Multigpu_Demo_Train=[SGD=[epochSize=100]] Multigpu_Demo_Train=[reader=[randomize=none]]
 
 --- Tests/EndToEndTests/Simple2d/OneHidden 
 
-COMMAND:  configFile=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Config/OneHidden.config currentDirectory=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Data RunDir=$(SolutionDir)\Tests\EndToEndTests\Tests\EndToEndTests\Simple2d_Simple@debug_gpu DataDir=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Data ConfigDir=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Config OutputDir=$(SolutionDir)\Tests\EndToEndTests\Tests\EndToEndTests\Simple2d_Simple@debug_gpu DeviceId=0 Simple_Demo_Train=[SGD=[maxEpochs=1]] Simple_Demo_Train=[SGD=[epochSize=100]] Simple_Demo_Train=[reader=[randomize=none]]
+COMMAND:  configFile=$(SolutionDir)\Tests\EndToEndTests\Simple2d/OneHidden.config currentDirectory=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Data RunDir=$(SolutionDir)\Tests\EndToEndTests\Tests\EndToEndTests\Simple2d_Simple@debug_gpu DataDir=$(SolutionDir)\Tests\EndToEndTests\Simple2d\Data ConfigDir=$(SolutionDir)\Tests\EndToEndTests\Simple2d OutputDir=$(SolutionDir)\Tests\EndToEndTests\Tests\EndToEndTests\Simple2d_Simple@debug_gpu DeviceId=0 Simple_Demo_Train=[SGD=[maxEpochs=1]] Simple_Demo_Train=[SGD=[epochSize=100]] Simple_Demo_Train=[reader=[randomize=none]]
 
 --- Examples/Speech/AN4/FeedForward 
 
