@@ -33,6 +33,9 @@ class minibatchutterancesourcemulti : public minibatchsource
     std::vector<size_t> featdim;
     std::vector<bool> expandToUtt;           // indicator of whether features should be applied to entire utterance, e.g. ivectors
     const bool framemode;                    // true -> actually return frame-level randomized frames (not possible in lattice mode)
+    const bool truncated;                    //false -> trauncated utterance or not within minibatch
+    size_t maxUtteranceLength;                  //maximum utterance length in non-frame and non-truncated mode
+
     std::vector<std::vector<size_t>> counts; // [s] occurence count for all states (used for priors)
     int verbosity;
     // lattice reader
@@ -881,9 +884,11 @@ public:
     // This mode requires utterances with time stamps.
     minibatchutterancesourcemulti(bool useMersenneTwister, const std::vector<std::vector<wstring>> &infiles, const std::vector<map<wstring, std::vector<msra::asr::htkmlfentry>>> &labels,
                                   std::vector<size_t> vdim, std::vector<size_t> udim, std::vector<size_t> leftcontext, std::vector<size_t> rightcontext, size_t randomizationrange,
-                                  const latticesource &lattices, const map<wstring, msra::lattices::lattice::htkmlfwordsequence> &allwordtranscripts, const bool framemode, std::vector<bool> expandToUtt)
-                                  : vdim(vdim), leftcontext(leftcontext), rightcontext(rightcontext), sampperiod(0), featdim(0), randomizationrange(randomizationrange), currentsweep(SIZE_MAX), lattices(lattices), allwordtranscripts(allwordtranscripts), framemode(framemode), chunksinram(0), timegetbatch(0), verbosity(2), m_generatePhoneBoundaries(!lattices.empty()), m_frameRandomizer(randomizedchunks, useMersenneTwister), expandToUtt(expandToUtt),
-                                    m_useMersenneTwister(useMersenneTwister)
+                                  const latticesource &lattices, const map<wstring, msra::lattices::lattice::htkmlfwordsequence> &allwordtranscripts, const bool framemode, std::vector<bool> expandToUtt,
+                                  const size_t maxUtteranceLength, const bool truncated)
+                                  : vdim(vdim), leftcontext(leftcontext), rightcontext(rightcontext), sampperiod(0), featdim(0), randomizationrange(randomizationrange), currentsweep(SIZE_MAX), 
+                                  lattices(lattices), allwordtranscripts(allwordtranscripts), framemode(framemode), chunksinram(0), timegetbatch(0), verbosity(2), m_generatePhoneBoundaries(!lattices.empty()), 
+                                  m_frameRandomizer(randomizedchunks, useMersenneTwister), expandToUtt(expandToUtt), m_useMersenneTwister(useMersenneTwister), maxUtteranceLength(maxUtteranceLength), truncated(truncated)
     // [v-hansu] change framemode (lattices.empty()) into framemode (false) to run utterance mode without lattice
     // you also need to change another line, search : [v-hansu] comment out to run utterance mode without lattice
     {
@@ -947,7 +952,7 @@ public:
                 // we need at least 2 frames for boundary markers to work
                 else if (!expandToUtt[m] && uttframes < 2)
                     RuntimeError("minibatchutterancesource: utterances < 2 frames not supported");
-                if (uttframes > frameref::maxframesperutterance)
+                if (uttframes > frameref::maxframesperutterance || (truncated == false && framemode == false && uttframes > maxUtteranceLength))
                 {
                     fprintf(stderr, "minibatchutterancesource: skipping %d-th file (%d frames) because it exceeds max. frames (%d) for frameref bit field: %ls\n", i, (int) uttframes, (int) frameref::maxframesperutterance, key.c_str());
                     uttduration[i] = 0;

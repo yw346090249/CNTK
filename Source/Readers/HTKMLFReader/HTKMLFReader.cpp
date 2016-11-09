@@ -522,7 +522,7 @@ void HTKMLFReader<ElemType>::PrepareForTrainingOrTesting(const ConfigRecordType&
         m_frameSource.reset(new msra::dbn::minibatchutterancesourcemulti(useMersenneTwisterRand, infilesmulti, labelsmulti, m_featDims, m_labelDims,
                                                                          numContextLeft, numContextRight, randomize, 
                                                                          *m_lattices, m_latticeMap, m_frameMode, 
-                                                                         m_expandToUtt));
+                                                                         m_expandToUtt, m_maxUtteranceLength, m_truncated));
         m_frameSource->setverbosity(m_verbosity);
     }
     else if (EqualCI(readMethod, L"rollingWindow"))
@@ -1692,7 +1692,7 @@ bool HTKMLFReader<ElemType>::ReNewBufferForMultiIO(size_t i)
         const msra::dbn::matrixstripe featOri = m_mbiter->frames(id);
         size_t fdim = featOri.rows();
         const size_t actualmbsizeOri = featOri.cols();
-        if (m_truncated == false && m_frameMode == false && actualmbsizeOri > m_maxUtteranceLength)
+        /*if (m_truncated == false && m_frameMode == false && actualmbsizeOri > m_maxUtteranceLength)
         {
             (*m_mbiter)++;
             if (!(*m_mbiter))
@@ -1703,7 +1703,7 @@ bool HTKMLFReader<ElemType>::ReNewBufferForMultiIO(size_t i)
                 "than the %zd, skipping it.\n",
                 m_maxUtteranceLength);
             return ReNewBufferForMultiIO(i);
-        }
+        }*/
         m_featuresStartIndexMultiUtt[id + i * numOfFea] = totalFeatNum;
         totalFeatNum = fdim * actualmbsizeOri + m_featuresStartIndexMultiUtt[id + i * numOfFea];
     }
