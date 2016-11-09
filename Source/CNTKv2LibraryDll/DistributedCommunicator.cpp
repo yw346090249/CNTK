@@ -188,7 +188,7 @@ namespace CNTK
         int encodedSizeInBytes = (int)encoded.size();
         std::vector<int> othersSize;
         othersSize.resize(m_mpi->NumNodesInUse());
-        m_mpi->Gather(&encodedSizeInBytes, 1, &othersSize[0], othersSize.size(), 0);
+        m_mpi->Gather(&encodedSizeInBytes, 1, &othersSize[0], 1, 0);
 
         output.resize(m_mpi->NumNodesInUse());
         int totalSizeInBytes = std::accumulate(othersSize.begin(), othersSize.end(), 0);
@@ -215,6 +215,7 @@ namespace CNTK
 
     void MPICommunicatorImpl::Concatenate(const std::vector<NDArrayViewPtr>& input, std::vector<NDArrayViewPtr>& output, const std::unordered_set<DistributedWorkerDescriptor>& workers)
     {
+        // TODO: Currently we only support concatenation of inputs of the same size.
         CheckWorkers(workers);
 
         // Check inputs, currently we support only CPU
@@ -228,7 +229,7 @@ namespace CNTK
         for (size_t i = 0; i < input.size(); ++i)
         {
             if (output[i] == nullptr || 
-                output[i]->Shape().TotalSize() * m_mpi->NumNodesInUse() != input[i]->Shape().TotalSize() ||
+                output[i]->Shape().TotalSize() != m_mpi->NumNodesInUse() * input[i]->Shape().TotalSize() ||
                 output[i]->GetDataType() != input[i]->GetDataType())
             {
                 // Allocating flat array for all ranks.
@@ -242,10 +243,11 @@ namespace CNTK
         {
             auto& in = input[i];
             auto& out = output[i];
+
             if (input[i]->GetDataType() == DataType::Float)
-                m_mpi->AllGatherAsync(in->WritableDataBuffer<float>(), in->Shape().TotalSize(), out->WritableDataBuffer<float>(), out->Shape().TotalSize(), &allReduceRequests[i]);
+                m_mpi->AllGatherAsync(in->DataBuffer<float>(), in->Shape().TotalSize(), out->WritableDataBuffer<float>(), in->Shape().TotalSize(), &allReduceRequests[i]);
             else if (input[i]->GetDataType() == DataType::Double)
-                m_mpi->AllGatherAsync(in->WritableDataBuffer<double>(), in->Shape().TotalSize(), out->WritableDataBuffer<double>(), out->Shape().TotalSize(), &allReduceRequests[i]);
+                m_mpi->AllGatherAsync(in->DataBuffer<double>(), in->Shape().TotalSize(), out->WritableDataBuffer<double>(), in->Shape().TotalSize(), &allReduceRequests[i]);
             else
                 LogicError("Type is not supported.");
         }

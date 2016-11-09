@@ -433,29 +433,29 @@ public:
     }
 
     template <class ElemType>
-    void AllGatherAsync(ElemType *sendData, size_t numSendElements, ElemType *receiveData, size_t numRecvElements, MPI_Request* request) const
+    void AllGatherAsync(const ElemType *sendData, size_t numSendElements, ElemType *receiveData, size_t numRecvElements, MPI_Request* request) const
     {
         if ((NumNodesInUse() > 1 && (Communicator() != MPI_COMM_NULL)))
         {
-            MPI_Iallgather(sendData, (int)numSendElements, GetDataType(sendData), receiveData, (int)numRecvElements, GetDataType(receiveData), Communicator(), request) || MpiFail("AllReduceAsync: MPI_Iallreduce");
+            MPI_Iallgather(sendData, (int)numSendElements, GetDataType(receiveData), receiveData, (int)numRecvElements, GetDataType(receiveData), Communicator(), request) || MpiFail("AllReduceAsync: MPI_Iallgather");
         }
     }
 
     template <class ElemType>
-    void Gather(ElemType *sendData, size_t numSendElements, ElemType *receiveData, size_t numRecvElements, size_t rootRank) const
+    void Gather(const ElemType *sendData, size_t numSendElements, ElemType *receiveData, size_t numRecvElements, size_t rootRank) const
     {
         if ((NumNodesInUse() > 1 && (Communicator() != MPI_COMM_NULL)))
         {
-            MPI_Gather(sendData, (int)numSendElements, GetDataType(sendData), receiveData, (int)numRecvElements, GetDataType(receiveData), (int)rootRank, Communicator()) || MpiFail("AllReduceAsync: MPI_Iallreduce");
+            MPI_Gather(sendData, (int)numSendElements, GetDataType(receiveData), receiveData, (int)numRecvElements, GetDataType(receiveData), (int)rootRank, Communicator()) || MpiFail("AllReduceAsync: MPI_Gather");
         }
     }
 
     template <class ElemType>
-    void Gatherv(ElemType *sendData, size_t numSendElements, ElemType *receiveData, int recvCounts[], int offsets[], size_t rootRank) const
+    void Gatherv(const ElemType *sendData, size_t numSendElements, ElemType *receiveData, int recvCounts[], int offsets[], size_t rootRank) const
     {
         if ((NumNodesInUse() > 1 && (Communicator() != MPI_COMM_NULL)))
         {
-            MPI_Gatherv(sendData, (int)numSendElements, GetDataType(sendData), receiveData, recvCounts, offsets, GetDataType(receiveData), (int)rootRank, Communicator()) || MpiFail("AllReduceAsync: MPI_Iallreduce");
+            MPI_Gatherv(sendData, (int)numSendElements, GetDataType(receiveData), receiveData, recvCounts, offsets, GetDataType(receiveData), (int)rootRank, Communicator()) || MpiFail("AllReduceAsync: MPI_Gatherv");
         }
     }
 
