@@ -103,9 +103,9 @@ class ProgressPrinter:
             self.updates = 0
             avg_loss, avg_metric, samples = self.reset_start()
             epoch_end_time = time()
-			time_delta = epoch_end_time - self.epoch_start_time
-			speed = 0
-			if (time_delta > 0):
+            time_delta = epoch_end_time - self.epoch_start_time
+            speed = 0
+            if (time_delta > 0):
                 speed = samples / time_delta
                 self.epoch_start_time = epoch_end_time
             if with_metric:
