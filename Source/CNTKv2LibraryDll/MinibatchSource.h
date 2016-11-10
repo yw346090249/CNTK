@@ -46,6 +46,8 @@ namespace CNTK
             return Microsoft::MSR::CNTK::InputStreamDescription(s.m_name, CNTKdeviceId, CNTKMatrixType, CNTKMatrixFormat);
         }
 
+        size_t GetCurrentNodeRank();
+
     private: 
         std::unordered_set<StreamInformation> m_streamInfos;
         bool m_epochEndReached;
@@ -63,5 +65,8 @@ namespace CNTK
         // Shim will be deleted in the future versions.
         std::shared_ptr<Microsoft::MSR::CNTK::ReaderShim<float>> m_shim;
         Microsoft::MSR::CNTK::StreamMinibatchInputs m_matrices;
+
+        // mocker for test
+        DistributedCommunicatorPtr m_mockDistributedCommunicator;
     };
 }

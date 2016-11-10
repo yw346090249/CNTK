@@ -161,6 +161,13 @@ namespace CNTK
 
         m_shim = std::shared_ptr<ReaderShim<float>>(new ReaderShim<float>(compositeDataReader), [](ReaderShim<float>* x) { x->Destroy(); });
         m_shim->Init(config);
+
+        // For TEST ONLY, pass in the mockers
+        const wchar_t* mockCommunicatoryConfigurationKey = L"mockCommunicator";
+        if (configuration.Contains(mockCommunicatoryConfigurationKey))
+        {
+            m_mockDistributedCommunicator = *(DistributedCommunicatorPtr*)(configuration[mockCommunicatoryConfigurationKey].Value<size_t>());
+        }
     }
 
     /*virtual*/ const std::unordered_map<StreamInformation, MinibatchData>&
@@ -183,20 +190,27 @@ namespace CNTK
             size_t prevNumWorkers = m_numWorkers;
             if (IsDistributed())
             {
-                MPIWrapperPtr mpi = MPIWrapper::GetInstance();
-                if (mpi == nullptr)
+                if (m_mockDistributedCommunicator == nullptr)
                 {
-                    // create mpi instance if intended to be distributed
-                    mpi = MPIWrapper::GetInstance(true);
+                    MPIWrapperPtr mpi = MPIWrapper::GetInstance();
+                    if (mpi == nullptr)
+                    {
+                        // create mpi instance if intended to be distributed
+                        mpi = MPIWrapper::GetInstance(true);
+                    }
+                    m_numWorkers = mpi->NumNodesInUse();
                 }
-                m_numWorkers = mpi->NumNodesInUse();
+                else
+                {
+                    m_numWorkers = m_mockDistributedCommunicator->Workers().size();
+                }
             }
 
             if (m_prevMinibatchSize == 0)
             {
                 EpochConfiguration epochConfig;
                 epochConfig.m_numberOfWorkers = m_numWorkers;
-                epochConfig.m_workerRank = (m_numWorkers > 1) ? MPIWrapper::GetInstance()->CurrentNodeRank() : 0;
+                epochConfig.m_workerRank = GetCurrentNodeRank();
                 epochConfig.m_minibatchSizeInSamples = minibatchSizeInSamples;
                 epochConfig.m_truncationSize = m_truncationLength;
 
@@ -239,7 +253,7 @@ namespace CNTK
 
                 ReaderConfiguration newConfig;
                 newConfig.m_numberOfWorkers = m_numWorkers;
-                newConfig.m_workerRank = (m_numWorkers > 1) ? MPIWrapper::GetInstance()->CurrentNodeRank() : 0;
+                newConfig.m_workerRank = GetCurrentNodeRank();
                 newConfig.m_minibatchSizeInSamples = minibatchSizeInSamples;
                 newConfig.m_truncationSize = m_truncationLength;
 
@@ -298,5 +312,19 @@ namespace CNTK
         auto checkpointedMinibatchSourcePosition = checkpoint[PositionAttributeName].Value<size_t>();
         m_shim->SetCurrentSamplePosition(checkpointedMinibatchSourcePosition);
         m_distributedAfterSampleCount = checkpoint[DistributedAfterSampleCountAttributeName].Value<size_t>();
+    }
+
+    size_t CompositeMinibatchSource::GetCurrentNodeRank()
+    {
+        if (m_numWorkers == 1) return 0;
+
+        if (m_mockDistributedCommunicator == nullptr)
+        {
+            return MPIWrapper::GetInstance()->CurrentNodeRank();
+        }
+        else
+        {
+            return m_mockDistributedCommunicator->CurrentWorker().m_globalRank;
+        }
     }
 }
