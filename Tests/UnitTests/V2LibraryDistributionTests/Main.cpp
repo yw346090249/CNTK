@@ -35,10 +35,8 @@ bool Is1bitSGDAvailable()
     return is1bitSGDAvailable;
 }
 
-const size_t minibatchSize = 25;
-
 // TODO: Move to other file.
-void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, DistributedTrainerPtr distributedTrainer, size_t rank, std::vector<double>* trainCE = nullptr, size_t ouputFreqMBInMinibatches = 20)
+void TrainSimpleDistributedFeedForwardClassifer(const DeviceDescriptor& device, DistributedTrainerPtr distributedTrainer, size_t rank, std::vector<double>* trainCE = nullptr, size_t ouputFreqMBInMinibatches = 20, size_t minibatchSize = 25)
 {
     const size_t inputDim = 2;
     const size_t numOutputClasses = 2;
@@ -295,15 +293,15 @@ int main(int /*argc*/, char* /*argv*/[])
     if (Is1bitSGDAvailable())
     {
         size_t ouputFreqMB = 20;
-
+        size_t minibatchSize = 25;
         {
             size_t distributedAfterMB = 100;
 
             std::vector<double> nonDistCPUTrainCE;
-            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), nullptr, 0, &nonDistCPUTrainCE, ouputFreqMB);
+            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), nullptr, 0, &nonDistCPUTrainCE, ouputFreqMB, minibatchSize);
 
             std::vector<double> nonDistCPUTrainCE2;
-            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), nullptr, 0, &nonDistCPUTrainCE2, ouputFreqMB);
+            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), nullptr, 0, &nonDistCPUTrainCE2, ouputFreqMB, minibatchSize);
 
             for (int i = 0; i < distributedAfterMB / ouputFreqMB; i++)
             {
@@ -314,7 +312,7 @@ int main(int /*argc*/, char* /*argv*/[])
             size_t distributedAfterSampleCount = distributedAfterMB * minibatchSize;
             auto communicator = QuantizedMPICommunicator(true, true, 1);
             auto distributedTrainer = CreateQuantizedDataParallelDistributedTrainer(communicator, false, distributedAfterSampleCount);
-            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), distributedTrainer, communicator->CurrentWorker().m_globalRank, &CPUTrainCE, ouputFreqMB);
+            TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::CPUDevice(), distributedTrainer, communicator->CurrentWorker().m_globalRank, &CPUTrainCE, ouputFreqMB, minibatchSize);
     
             for (int i = 0; i < distributedAfterMB / ouputFreqMB; i++)
             {
@@ -324,10 +322,10 @@ int main(int /*argc*/, char* /*argv*/[])
             if (IsGPUAvailable())
             {
                 std::vector<double> nonDistGPUTrainCE;
-                TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), nullptr, 0, &nonDistGPUTrainCE, ouputFreqMB);
+                TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), nullptr, 0, &nonDistGPUTrainCE, ouputFreqMB, minibatchSize);
 
                 std::vector<double> nonDistGPUTrainCE2;
-                TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), nullptr, 0, &nonDistGPUTrainCE2, ouputFreqMB);
+                TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), nullptr, 0, &nonDistGPUTrainCE2, ouputFreqMB, minibatchSize);
 
                 for (int i = 0; i < distributedAfterMB / ouputFreqMB; i++)
                 {
@@ -335,7 +333,7 @@ int main(int /*argc*/, char* /*argv*/[])
                 }
 
                 std::vector<double> GPUTrainCE;
-                TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), distributedTrainer, communicator->CurrentWorker().m_globalRank, &GPUTrainCE, ouputFreqMB);
+                TrainSimpleDistributedFeedForwardClassifer(DeviceDescriptor::GPUDevice(0), distributedTrainer, communicator->CurrentWorker().m_globalRank, &GPUTrainCE, ouputFreqMB, minibatchSize);
 
                 for (int i = 0; i < distributedAfterMB / ouputFreqMB; i++)
                 {
