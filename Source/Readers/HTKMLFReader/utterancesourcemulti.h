@@ -952,9 +952,15 @@ public:
                 // we need at least 2 frames for boundary markers to work
                 else if (!expandToUtt[m] && uttframes < 2)
                     RuntimeError("minibatchutterancesource: utterances < 2 frames not supported");
-                if (uttframes > frameref::maxframesperutterance || (truncated == false && framemode == false && uttframes > maxUtteranceLength))
+                if (uttframes > frameref::maxframesperutterance )
                 {
                     fprintf(stderr, "minibatchutterancesource: skipping %d-th file (%d frames) because it exceeds max. frames (%d) for frameref bit field: %ls\n", i, (int) uttframes, (int) frameref::maxframesperutterance, key.c_str());
+                    uttduration[i] = 0;
+                    uttisvalid[i] = false;
+                }
+                else if (truncated == false && framemode == false && uttframes > maxUtteranceLength)
+                {
+                    fprintf(stderr, "minibatchutterancesource: skipping %d-th file (%d frames) because it exceeds max. frames (%d) for frameref bit field: %ls\n", i, (int)uttframes, (int)maxUtteranceLength, key.c_str());
                     uttduration[i] = 0;
                     uttisvalid[i] = false;
                 }
