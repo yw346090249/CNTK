@@ -12,6 +12,7 @@
 #include "Config.h"
 #include "Reader.h"
 #include "ConvolutionEngine.h"
+#include "ReshapingNodes.h"
 
 namespace CNTK
 {
@@ -237,8 +238,6 @@ namespace CNTK
 
     inline void AddConfigString(std::wstringstream& s, const std::wstring& key, const DictionaryValue& value, size_t numIndentationSpaces)
     {
-        static const size_t perLevelIndentSize = 4;
-
         AddIndentation(s, numIndentationSpaces);
         s << key << L" = ";
         AddConfigString(s, value, numIndentationSpaces);
@@ -307,11 +306,20 @@ namespace CNTK
         }
     }
 
-    static size_t const CNTKInternalIdxValueForAllStaticAxes = 0;
+    static int const CNTKInternalIdxValueForAllStaticAxes = Microsoft::MSR::CNTK::ReduceElementsNode<float>::CNTKInternalIdxValueForAllStaticAxes;
+    static int const CNTKInternalIdxValueForAllAxes = Microsoft::MSR::CNTK::ReduceElementsNode<float>::CNTKInternalIdxValueForAllAxes;
+    static int const CNTKInternalIdxValueForSequenceAxis = Microsoft::MSR::CNTK::ReduceElementsNode<float>::CNTKInternalIdxValueForSequenceAxis;
+
     inline Axis AsAxis(int CNTKInternalAxisIdx)
     {
         if (CNTKInternalAxisIdx == CNTKInternalIdxValueForAllStaticAxes)
             return Axis::AllStaticAxes();
+
+        if (CNTKInternalAxisIdx == CNTKInternalIdxValueForAllAxes)
+            return Axis::AllAxes();
+
+        if (CNTKInternalAxisIdx == CNTKInternalIdxValueForSequenceAxis)
+            return Axis::OperandSequenceAxis();
 
         return Axis(CNTKInternalAxisIdx - 1);
     }
@@ -320,6 +328,12 @@ namespace CNTK
     {
         if (axis == Axis::AllStaticAxes())
             return CNTKInternalIdxValueForAllStaticAxes;
+
+        if (axis == Axis::AllAxes())
+            return CNTKInternalIdxValueForAllAxes;
+
+        if (axis.IsDynamicAxis() && axis.IsOrdered())
+            return CNTKInternalIdxValueForSequenceAxis;
 
         if (!axis.IsStaticAxis())
             LogicError("Only Axis that represent static indices can be converted to a CNTK internal axis index");
@@ -467,16 +481,40 @@ namespace CNTK
 
     inline Axis& NormalizeStaticAxis(Axis& axis, const NDShape& operandShape)
     {
-        if (axis != Axis::AllStaticAxes())
+        if (axis != Axis::AllStaticAxes() && axis != Axis::AllAxes())
         {
             assert(axis.IsStaticAxis());
             assert(operandShape != NDShape::Unknown);
 
-            if (axis.StaticAxisIndex() < 0)
+            if (axis == Axis::EndStaticAxis())
+                axis = Axis((int)operandShape.Rank());
+            else if (axis.StaticAxisIndex() < 0)
                 axis = Axis((int)operandShape.Rank() + axis.StaticAxisIndex());
         }
 
         return axis;
+    }
+
+    inline Axis& NormalizeAxis(Axis& axis, const Variable& operand)
+    {
+        if (axis.IsDynamicAxis())
+        {
+            if (axis == Axis::OperandSequenceAxis())
+            {
+                auto operandDynamicAxes = operand.DynamicAxes();
+                assert(operandDynamicAxes != Axis::UnknownDynamicAxes());
+
+                auto numOrderedDynamicAxes = std::count_if(operandDynamicAxes.begin(), operandDynamicAxes.end(), [](const Axis& axis) { return axis.IsOrdered(); });
+                if (numOrderedDynamicAxes != 1)
+                    InvalidArgument("Axis argument of Axis::OperandSequenceAxis() cannot be resolved if the operand has no sequence axis or > 1 ordered dynamic axes!");
+
+                axis = *std::find_if(operandDynamicAxes.begin(), operandDynamicAxes.end(), [](const Axis& axis) { return axis.IsOrdered(); });
+            }
+
+            return axis;
+        }
+        else
+            return NormalizeStaticAxis(axis, operand.Shape());
     }
 
     inline void VerifyStaticAxis(const Axis& axis, const NDShape& operandShape)
@@ -488,9 +526,103 @@ namespace CNTK
             InvalidArgument("The specified axis index (%d) exceeds the static #axes (%d) of the corresponding operand", (int)axis.StaticAxisIndex(), (int)operandShape.Rank());
     }
 
+    std::vector<Axis> DynamicAxesFromInternalDynamicAxisName(const std::wstring& internalDynamicAxisName);
+
+    // Construct the dynamic axis name to be used internally for the CNTK InputNodes
+    std::wstring InternalDynamicAxisNameFromDynamicAxes(const std::vector<Axis>& dynamicAxes);
+
     std::shared_ptr<std::fstream> GetFstream(const std::wstring& filePath, bool readOnly);
     int GetFileDescriptor(const std::wstring& filePath, bool readOnly);
 
     std::string ToString(const std::wstring& wstring);
     std::wstring ToWString(const std::string& string);
+
+
+    std::pair<size_t, size_t> GetNumTimeStepsAndSequences(const NDShape& maskShape, size_t numDynamicAxes);
+
+    // Helper class to manage a collection of learners.
+    class Learners
+    {
+    public:
+        explicit Learners(const std::vector<LearnerPtr>& learners);
+
+        bool Update(std::unordered_map<Parameter, NDArrayViewPtr>& gradientValues, size_t trainingSampleCount, bool sweepEnd);
+        bool Update(std::unordered_map<Parameter, NDArrayViewPtr>& gradientValues, MinibatchInfo& minibatchInfo);
+
+        std::vector<DictionaryValue> CreateCheckpoint();
+
+        void RestoreFromCheckpoint(const std::vector<DictionaryValue>&);
+
+        const std::vector<LearnerPtr>& ParameterLearners() const
+        {
+            return m_learners;
+        }
+
+        std::unordered_set<Parameter> GetParameters() const
+        {
+            std::unordered_set<Parameter> result;
+            for (auto l : m_learners)
+            {
+                const auto& p = l->Parameters();
+                result.insert(p.begin(), p.end());
+            }
+            return result;
+        }
+
+        bool IsDistributed() const
+        {
+            return m_isDistributed;
+        }
+
+    private:
+        void GetLearnerGradients(LearnerPtr learner, const std::unordered_map<Parameter, NDArrayViewPtr>& allGradients, std::unordered_map<Parameter, NDArrayViewPtr>& learnerGradients);
+        void CheckDistributedLearners();
+
+        std::vector<LearnerPtr> m_learners;
+        bool m_isDistributed;
+    };
+
+    class Utils
+    {
+    public:
+        static void VerifyVariableValueCompatibility(const Variable& var, const ValuePtr& value);
+
+        template <typename ElementType>
+        static std::pair<std::shared_ptr<const Microsoft::MSR::CNTK::Matrix<ElementType>>, Microsoft::MSR::CNTK::MBLayoutPtr> GetCNTKImplMatrixAndMBLayoutFromValueObject(const Variable& var, const ValuePtr& value);
+
+        template <typename ElementType>
+        static ValuePtr GetValueObjectFromCNTKImplMatrixAndMBLayout(const NDShape& sampleShape, const Microsoft::MSR::CNTK::Matrix<ElementType>& matrix, const Microsoft::MSR::CNTK::MBLayoutPtr& layout, bool readOnly = true);
+
+        template <typename ElementType>
+        static ValuePtr GetValueObjectFromCNTKImplMatrixAndMBLayout(const Variable& var, const Microsoft::MSR::CNTK::Matrix<ElementType>& matrix, const Microsoft::MSR::CNTK::MBLayoutPtr& layout, bool readOnly = true);
+    };
+
+    template <typename NamedType>
+    inline std::wstring NamedListString(const std::vector<NamedType>& namedList)
+    {
+        std::wstring namedListString;
+        for (auto namedObject : namedList)
+        {
+            if (!namedListString.empty())
+                namedListString += L", ";
+
+            namedListString += namedObject.Name();
+        }
+
+        return namedListString;
+    }
+
+    class Accumulator : public Value
+    {
+    public:
+        Accumulator() : Value(nullptr), m_numUpdates(0) {}
+
+        void Update(const ValuePtr& delta, const DeviceDescriptor& device);
+        void Reset();
+
+    private:
+        void ResetToZero();
+
+        size_t   m_numUpdates;
+    };
 }

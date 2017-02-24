@@ -33,6 +33,13 @@ namespace CNTK
     const std::wstring epochSizeKey = L"epoch_size";
     const std::wstring scheduleKey = L"schedule";
     const std::wstring learningRateScheduleKey = L"learnig_rate_schedule";
+    const std::wstring stateKey = L"state";
+    const std::wstring rngSeedKey = L"rng_seed";
+    const std::wstring rngOffsetKey = L"rng_offset";
+    const std::wstring blockFunctionCompositeKey = L"block_function_composite";
+    const std::wstring blockFunctionOpNameKey = L"block_function_op_name";
+    const std::wstring blockFunctionCompositeArgumentsMapKeysKey = L"block_function_composite_arguments_map_keys";
+    const std::wstring blockFunctionCompositeArgumentsMapValuesKey = L"block_function_composite_arguments_map_values";
 
     template <typename T> 
     inline std::string GetVersionsString(size_t currentVersion, size_t dictVersion)
@@ -90,16 +97,5 @@ namespace CNTK
         ValidateType<T>(dict, typeValue, currentVersion);
 
         return version;
-    }
-
-    inline bool IsLegacyModel(std::fstream& stream)
-    {
-        static const char legacyMarker[] = { 0x42, 0x00, 0x43, 0x00, 0x4e, 0x00, 0x00, 0x00 }; // L"BCN"
-        static const auto size = sizeof(legacyMarker);
-        char buffer[size];
-        const auto position = stream.tellg();
-        stream.read(buffer, size);
-        stream.seekg(position);
-        return (strcmp(legacyMarker, buffer) == 0);
     }
 }

@@ -12,7 +12,12 @@ the forward and the backward pass
 from __future__ import division
 import numpy as np
 import pytest
-from .ops_test_utils import unittest_helper, _test_unary_op, _test_binary_op, AA, I, precision, PRECISION_TO_TYPE
+from .ops_test_utils import unittest_helper, _test_unary_op, _test_binary_op, AA, I, precision, PRECISION_TO_TYPE, cntk_device
+from cntk.tests.test_utils import TOLERANCE_ABSOLUTE
+from cntk.utils import eval as cntk_eval, sanitize_dtype_cntk
+from .. import constant
+from ..variables import Parameter, Constant
+from cntk import set_default_device
 
 EPS_IN_LOG = 1e-37        # 1e-37 is the highest guaranteed precision
 # the backward result returned by CNTK log() for epsilon
@@ -44,6 +49,7 @@ CLIP_TUPLES = [
 @pytest.mark.parametrize("min_value, max_value, x", CLIP_TUPLES)
 def test_op_clip(min_value, max_value, x, device_id, precision):
     from .. import clip
+    dev = cntk_device(device_id)
 
     expected_forward = [np.clip(AA([x], dtype=PRECISION_TO_TYPE[precision]), AA(
         min_value, dtype=PRECISION_TO_TYPE[precision]), AA(max_value, dtype=PRECISION_TO_TYPE[precision]))]
@@ -52,9 +58,12 @@ def test_op_clip(min_value, max_value, x, device_id, precision):
         'arg': [[np.array(np.logical_not(np.logical_or(np.greater(x, max_value), np.less(x, min_value))), dtype=PRECISION_TO_TYPE[precision])]]
     }
 
+    const_min_value = constant(min_value, device=dev)
+    const_max_value = constant(max_value, device=dev)
+
     _test_unary_op(precision, device_id, clip, x,
                    expected_forward, expected_backward,
-                   {'min_value': min_value, 'max_value': max_value})
+                   {'min_value': const_min_value, 'max_value': const_max_value})
 TENSORS = [
     ([[0, -0.1]]),
     ([[-100, -10], [-1, -0.1], [-0.01, -0.001],
@@ -126,7 +135,6 @@ def test_op_tanh(operand, device_id, precision):
 @pytest.mark.parametrize("dropout_rate", [0.0, 0.2, 0.5, 0.8])
 def test_op_dropout(shape, dropout_rate, device_id, precision):
     from cntk import dropout
-    from cntk.utils import eval, sanitize_dtype_cntk, cntk_device
 
     count = 10
     resulted_non_zeros = 0
@@ -146,7 +154,7 @@ def test_op_dropout(shape, dropout_rate, device_id, precision):
         value.shape = (1, 1) + value.shape
         forward_input = {a: value}
 
-        forward, backward = eval(dropout_node,
+        forward, backward = cntk_eval(dropout_node,
                                  forward_input,
                                  precision,
                                  cntk_device(device_id),
@@ -166,7 +174,6 @@ def test_op_dropout(shape, dropout_rate, device_id, precision):
 @pytest.mark.parametrize("dropout_rate", [-0.1, 1.0, 100])
 def test_op_dropout_bad_input(dropout_rate):
     from cntk import dropout
-    from cntk.utils import eval, sanitize_dtype_cntk, cntk_device
 
     a = I(shape=(1, 2), dtype='float', needs_gradient=True, name='a')
 
@@ -264,6 +271,67 @@ def test_op_relu(operand, device_id, precision):
     _test_unary_op(precision, device_id, relu, operand,
                    expected_forward, expected_backward)
 
+@pytest.mark.parametrize("operand", TENSORS)
+def test_op_elu(operand, device_id, precision):
+    elu_f  = np.vectorize(lambda x: np.exp(x) - 1.0 if x < 0 else x)
+    elu_b  = np.vectorize(lambda x: np.exp(x) if x < 0 else 1.0)
+
+    t = AA(operand, dtype=PRECISION_TO_TYPE[precision])
+
+    expected_forward = [[elu_f(t)]]
+    expected_backward = {
+        'arg': [[elu_b(t)]]
+    }
+
+    from cntk import elu
+
+    #BUGBUG: There is a bug in ElementSelect that cause nan in the output
+    #        for float32.
+    if PRECISION_TO_TYPE[precision] == np.float64:
+        _test_unary_op(precision, device_id, elu, operand,
+                       expected_forward, expected_backward)
+
+@pytest.mark.parametrize("operand", TENSORS)
+def test_op_leaky_relu(operand, device_id, precision):
+    leaky_relu_f  = np.vectorize(lambda x: 0.01 * x if x < 0 else x)
+    leaky_relu_b  = np.vectorize(lambda x: 0.01 if x < 0 else 1.0)
+
+    t = AA(operand, dtype=PRECISION_TO_TYPE[precision])
+
+    expected_forward = [[leaky_relu_f(t)]]
+    expected_backward = {
+        'arg': [[leaky_relu_b(t)]]
+    }
+
+    from cntk import leaky_relu
+
+    _test_unary_op(precision, device_id, leaky_relu, operand,
+                   expected_forward, expected_backward)
+
+@pytest.mark.parametrize("operand", TENSORS)
+def test_op_param_relu(operand, device_id, precision):
+    dev = cntk_device(device_id)
+    param_relu_f  = np.vectorize(lambda x: 0.5 * x if x < 0 else x)
+    param_relu_b  = np.vectorize(lambda x: 0.5 if x < 0 else 1.0)
+
+    t = AA(operand, dtype=PRECISION_TO_TYPE[precision])
+    a = AA(np.ones_like(t)*0.5, dtype=PRECISION_TO_TYPE[precision])
+    alpha = constant(a, device=dev)
+
+    expected_forward = [[param_relu_f(t)]]
+    expected_backward = {
+        'arg': [[param_relu_b(t)]]
+    }
+
+    from cntk import param_relu
+
+    def prelu(x):
+        return param_relu(alpha, x)
+
+    _test_unary_op(precision, device_id, prelu, operand,
+                    expected_forward, expected_backward)
+
+
 SAMPLES = [  # 2 samples having 4 classes
     [1, 1, 2, 3],
     [0, 0, 0, 0],
@@ -327,3 +395,42 @@ def test_op_hardmax(sample, device_id, precision):
 
     _test_unary_op(precision, device_id, hardmax, sample,
                    expected_forward, expected_backward)
+
+@pytest.mark.parametrize("use_cudnn", [True, False])
+@pytest.mark.parametrize("sample", SAMPLES)
+def test_op_batch_normalization(use_cudnn, sample, device_id, precision):
+    dtype = PRECISION_TO_TYPE[precision]
+    epsilon = 0.00001
+    dev = cntk_device(device_id)
+
+    t = AA(sample, dtype=dtype).reshape(-1,1,1)
+    mean = 1
+    var = 2
+    init_scale = 3
+    init_bias = 4
+
+    forward = [(x - mean) / np.sqrt(var + epsilon) * init_scale + init_bias for x in t]
+
+    expected_forward = AA(forward)
+
+    scale        = Parameter(init=AA([init_scale], dtype=dtype), device=dev)
+    bias         = Parameter(init=AA([init_bias], dtype=dtype), device=dev)
+    run_mean     = constant(mean, shape=(1), device=dev)
+    run_variance = constant(var, shape=(1), device=dev)
+    run_count = constant(0, device=dev)
+
+    from cntk import batch_normalization
+
+    a = I(shape=(1), dtype=dtype, needs_gradient=False, name='a')
+
+    with pytest.warns(Warning):
+        op = batch_normalization(a, scale, bias, run_mean, run_variance, False,
+            #no running_count here, 
+            epsilon=epsilon, use_cudnn_engine=use_cudnn)
+
+    op_node = batch_normalization(a, scale, bias, run_mean, run_variance, running_count=run_count, spatial=False,
+        epsilon=epsilon, use_cudnn_engine=use_cudnn)
+
+    forward_input = {a: t}
+
+    unittest_helper(op_node, forward_input, expected_forward, expected_backward=None, device_id=device_id, precision=precision)

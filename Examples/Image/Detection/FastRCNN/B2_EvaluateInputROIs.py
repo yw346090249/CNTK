@@ -16,14 +16,14 @@ subdirs = ['positive', 'testImages']
 overlaps = []
 roiCounts = []
 for subdir in subdirs:
-    imgFilenames = getFilesInDirectory(imgDir + subdir, ".jpg")
+    imgFilenames = getFilesInDirectory(os.path.join(imgDir, subdir), ".jpg")
 
     # loop over all iamges
     for imgIndex,imgFilename in enumerate(imgFilenames):
         if imgIndex % 20 == 0:
             print ("Processing subdir '{}', image {} of {}".format(subdir, imgIndex, len(imgFilenames)))
         # load ground truth
-        imgPath = imgDir + subdir + "/" + imgFilename
+        imgPath = os.path.join(imgDir, subdir, imgFilename)
         imgWidth, imgHeight = imWidthHeight(imgPath)
         gtBoxes, gtLabels = readGtAnnotation(imgPath)
         gtBoxes = [Bbox(*rect) for rect in gtBoxes]
@@ -43,7 +43,7 @@ for subdir in subdirs:
                     assert (roi.max() <= max(imgWidth, imgHeight) and roi.max() >= 0)
                     overlap = bboxComputeOverlapVoc(gtBox, roi)
                     maxOverlap = max(maxOverlap, overlap)
-        overlaps.append(maxOverlap)
+            overlaps.append(maxOverlap)
 print ("Average number of rois per image " + str(1.0 * sum(roiCounts) / len(overlaps)))
 
 # compute recall at different overlaps

@@ -1,4 +1,4 @@
-# CNTK Examples: Image/Getting Started
+# CNTK Examples: Image - Getting Started
 
 ## Overview
 
@@ -46,7 +46,7 @@ There are five cntk configuration files in the current folder. These cntk config
 
 ### 01_OneHidden.cntk
 
-This is a simple, one hidden layer network that produces `1.76%` of error. Since this model does not assume any spatial relationships between the pixels, it is often referred as "permutation invariant". 
+This is a simple, one hidden layer network that produces `1.76%` of error. Since this model does not assume any spatial relationships between the pixels, it is often referred as "permutation invariant".
 
 To run this example, use the following command:
 
@@ -67,7 +67,6 @@ To run this example, use the following command:
 `cntk configFile=02_OneConv.cntk`
 
 After normalization, a convolution layer with `16` kernels at size `(5,5)` is added, followed by a ReLU nonlinearity. Then, we perform max pooling on the output feature map, with size `(2,2)` and stride `(2,2)`. A dense layer of 64 hidden nodes is then added, followed by another ReLU, and another dense layer to generate the output. This network achieves `1.22%` error rate, which is better than the previous network.
-
 In practice, one would be stacking multiple convolution layers to improve classification accuracy. State-of-the-art convolution neural networks can achieve lower than 0.5% error rate on MNIST. Interested readers can find more examples in [Classification/ConvNet](../Classification/ConvNet).
 
 ### 03_OneConvdropout.cntk
@@ -100,4 +99,28 @@ In the fifth example, we show how CNTK can be used to perform a regression task.
 
 `cntk configFile=05_OneConvRegr.cntk`
 
- The trained network achieves root-mean-square error (RMSE) of 0.0039. To see more sophisticated examples on regression tasks, please refer to [Regression](../Regression).
+ The trained network achieves root-mean-square error (RMSE) of around 0.05. To see more sophisticated examples on regression tasks, please refer to [Regression](../Regression).
+
+### 06_OneConvRegrMultiNode.cntk
+
+In the sixth example, we show how to train CNTK with multiple process(GPUs) for a regression task. CNTK using MPI for the multiple nodes task, and CNTK currently support four parallel SGD algorithms: DataParallelSGD, BlockMomentumSGD, ModelAveragingSGD, DataParallelASGD. We reuse the same network architecture in `05_OneConvRegr`, only to add a parallel train block. To run this example on a machine, use the following command:
+
+`mpiexec -n 2 cntk configFile=06_OneConvRegrMultiNode.cntk parallelTrain=True parallelizationMethod=DataParallelSGD`
+
+You can change the parallelizationMethod to other three options. To see more detailed guide on multiple GPUs and machines tasks, please refer to [Multiple GPUs and machines](https://github.com/Microsoft/CNTK/wiki/Multiple-GPUs-and-machines).
+
+### 07_Deconvolution.cntk
+
+Example number seven shows how to use Deconvolution and Unpooling to generate a simple image auto encoder. It uses the MNIST dataset, which has a resolution of 28x28x1, encodes it into a 7x7x1 representation using convolution and pooling and decodes to the original resolution. The training criterion is root-mean-square error (RMSE). To run this example, use the following command for BrainScript:
+
+`cntk configFile=07_Deconvolution_BS.cntk`
+
+or this one for Python:
+
+`python 07_Deconvolution_PY.py`
+
+The rmse values for training and testing are 0.225 and 0.223 respectively. To visualize the encoded and decoded images run the following command (from a Python CNTK environment):
+
+`python 07_Deconvolution_Visualizer.py`
+
+The script uses by default the BrainScript model, set `use_brain_script_model=False` to use the Python model for visualization. The visualizations will be stored in the `Output` folder together with a text representation of the encoder and the decoder output.

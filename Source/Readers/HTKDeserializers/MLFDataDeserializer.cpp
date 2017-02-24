@@ -47,6 +47,7 @@ struct MLFUtterance : SequenceDescription
 };
 
 MLFDataDeserializer::MLFDataDeserializer(CorpusDescriptorPtr corpus, const ConfigParameters& cfg, bool primary)
+    : DataDeserializerBase(primary)
 {
     // TODO: This should be read in one place, potentially given by SGD.
     m_frameMode = (ConfigValue)cfg("frameMode", "true");
@@ -80,6 +81,7 @@ MLFDataDeserializer::MLFDataDeserializer(CorpusDescriptorPtr corpus, const Confi
 }
 
 MLFDataDeserializer::MLFDataDeserializer(CorpusDescriptorPtr corpus, const ConfigParameters& labelConfig, const wstring& name)
+    : DataDeserializerBase(false)
 {
     // The frame mode is currently specified once per configuration,
     // not in the configuration of a particular deserializer, but on a higher level in the configuration.
@@ -131,18 +133,14 @@ void MLFDataDeserializer::InitializeChunkDescriptions(CorpusDescriptorPtr corpus
     size_t numClasses = 0;
     size_t totalFrames = 0;
 
-    const auto& stringRegistry = corpus->GetStringRegistry();
-
     // TODO resize m_keyToSequence with number of IDs from string registry
-
     for (const auto& l : labels)
     {
-        // Currently the string registry contains only utterances described in scp.
-        // So here we skip all others.
-        size_t id = 0;
-        if (!stringRegistry.TryGet(msra::strfun::utf8(l.first), id))
+        auto key = msra::strfun::utf8(l.first);
+        if (!corpus->IsIncluded(key))
             continue;
 
+        size_t id = corpus->KeyToId(key);
         description.m_key.m_sequence = id;
 
         const auto& utterance = l.second;
@@ -239,9 +237,6 @@ void MLFDataDeserializer::InitializeStream(const wstring& name, size_t dimension
     stream->m_elementType = m_elementType;
     m_streams.push_back(stream);
 }
-
-void InitializeFeatureInformation();
-void InitializeAugmentationWindow(ConfigHelper& config);
 
 // Currently MLF has a single chunk.
 // TODO: This will be changed when the deserializer properly supports chunking.
@@ -348,13 +343,13 @@ bool MLFDataDeserializer::GetSequenceDescriptionByKey(const KeyType& key, Sequen
     if (m_frameMode)
     {
         size_t index = m_utteranceIndex[sequenceId] + key.m_sample;
-        result.m_id = index;
+        result.m_indexInChunk = index;
         result.m_numberOfSamples = 1;
     }
     else
     {
         assert(result.m_key.m_sample == 0);
-        result.m_id = sequenceId;
+        result.m_indexInChunk = sequenceId;
         result.m_numberOfSamples = (uint32_t) (m_utteranceIndex[sequenceId + 1] - m_utteranceIndex[sequenceId]);
     }
     return true;
